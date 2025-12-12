@@ -29,11 +29,11 @@ public:
     
     const double time_factor = std::cos(this->get_time());
 
-    // ∂u/∂x = π cos(πx) sin(πy) cos(t)
-    result[0] = M_PI * std::cos(M_PI * p[0]) * std::sin(M_PI * p[1]) * time_factor;
+    // ∂u/∂x = π*0.5 cos(pi*(x+1)/2) sin(pi*(y+1)/2) cos(t)
+    result[0] = M_PI * 0.5 * std::cos(M_PI * (p[0] + 1) / 2) * std::sin(M_PI * (p[1] + 1) / 2) * time_factor;
 
-    // ∂u/∂y = π sin(πx) cos(πy) cos(t)
-    result[1] = M_PI * std::sin(M_PI * p[0]) * std::cos(M_PI * p[1]) * time_factor;
+    // ∂u/∂y = π*0.5 sin(pi*(x+1)/2) cos(pi*(y+1)/2) cos(t)
+    result[1] = M_PI * 0.5 * std::sin(M_PI * (p[0] + 1) / 2) * std::cos(M_PI * (p[1] + 1) / 2) * time_factor;
 
     return result;
   }
@@ -56,7 +56,9 @@ main(int argc, char *argv[])
 
   ExactSolution exact_solution;
 
-  Wave problem(/*mesh_filename = */ "../mesh/mesh-square-10.msh",
+  Wave problem( -1.0,    // domain_left
+                1.0,     // domain_right  
+                5,       // n_refine (number of global refinements - controls mesh precision)
                /* degree = */ 1,
                /* T = */ 2.0,
                /* beta = */ 0.25,

@@ -7,27 +7,20 @@ Wave::setup()
 
   // Create the mesh.
   {
-    pcout << "Initializing the mesh" << std::endl;
+    pcout << "Initializing the mesh on domain [" << domain_left << ", "
+          << domain_right << "]^" << dim << std::endl;
 
-    // Read serial mesh.
+    // Create serial mesh first.
     Triangulation<dim> mesh_serial;
+    GridGenerator::hyper_cube(mesh_serial, domain_left, domain_right);
+    mesh_serial.refine_global(n_refine);
 
-    {
-      GridIn<dim> grid_in;
-      grid_in.attach_triangulation(mesh_serial);
+    // Partition and distribute the mesh.
+    GridTools::partition_triangulation(mpi_size, mesh_serial);
 
-      std::ifstream mesh_file(mesh_file_name);
-      grid_in.read_msh(mesh_file);
-    }
-
-    // Copy the serial mesh into the parallel one.
-    {
-      GridTools::partition_triangulation(mpi_size, mesh_serial);
-
-      const auto construction_data = TriangulationDescription::Utilities::
-        create_description_from_triangulation(mesh_serial, MPI_COMM_WORLD);
-      mesh.create_triangulation(construction_data);
-    }
+    const auto construction_data = TriangulationDescription::Utilities:: 
+      create_description_from_triangulation(mesh_serial, MPI_COMM_WORLD);
+    mesh.create_triangulation(construction_data);
 
     pcout << "  Number of elements = " << mesh.n_global_active_cells()
           << std::endl;
@@ -39,13 +32,15 @@ Wave::setup()
   {
     pcout << "Initializing the finite element space" << std::endl;
 
-    fe = std::make_unique<FE_SimplexP<dim>>(r);
+    // fe = std::make_unique<FE_SimplexP<dim>>(r);
+    fe = std::make_unique<FE_Q<dim>>(r);
 
     pcout << "  Degree                     = " << fe->degree << std::endl;
     pcout << "  DoFs per cell              = " << fe->dofs_per_cell
           << std::endl;
 
-    quadrature = std::make_unique<QGaussSimplex<dim>>(r + 1);
+    // quadrature = std::make_unique<QGaussSimplex<dim>>(r + 1);
+    quadrature = std::make_unique<QGauss<dim>>(r + 1);
 
     pcout << "  Quadrature points per cell = " << quadrature->size()
           << std::endl;
@@ -260,8 +255,7 @@ Wave::output() const
 
   data_out.build_patches();
 
-  const std::filesystem::path mesh_path(mesh_file_name);
-  const std::string output_file_name = "output-" + mesh_path.stem().string();
+  const std::string output_file_name = "output-hypercube";
 
   data_out.write_vtu_with_pvtu_record(/* folder = */ "./",
                                       /* basename = */ output_file_name,

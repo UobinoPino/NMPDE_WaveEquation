@@ -12,6 +12,7 @@
 #include <deal.II/fe/fe_simplex_p.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping_fe.h>
+#include <deal.II/fe/fe_q.h>
 
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_in.h>
@@ -141,22 +142,25 @@ public:
   //   }
   // };
 
-  // Constructor.
-  Wave(const std::string                               &mesh_file_name_,
-       const unsigned int                              &r_,
-       const double                                    &T_,
-       const double                                    &beta_,
-       const double                                    &gamma_,
-       const double                                    &delta_t_,
-       const std::function<double(const Point<dim> &, const double &)> &f_)
-    : mesh_file_name(mesh_file_name_)
+  Wave(const double                                   &domain_left_,
+      const double                                    &domain_right_,
+      const unsigned int                              &n_refine_,
+      const unsigned int                              &r_,
+      const double                                    &T_,
+      const double                                    &beta_,
+      const double                                    &gamma_,
+      const double                                    &delta_t_,
+      const std::function<double(const Point<dim> &, const double &)> &f_)
+    : domain_left(domain_left_)
+    , domain_right(domain_right_)
+    , n_refine(n_refine_)
     , r(r_)
     , T(T_)
     , beta(beta_)
     , gamma(gamma_)
     , delta_t(delta_t_)
-    , f(f_) // qui voglio usare FunctionF
-    , mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
+    , f(f_)
+    , mpi_size(Utilities:: MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , mesh(MPI_COMM_WORLD)
     , pcout(std::cout, mpi_rank == 0)
@@ -188,8 +192,15 @@ protected:
   void
   output() const;
 
-  // Name of the mesh.
-  const std::string mesh_file_name;
+  // // Name of the mesh.
+  // const std::string mesh_file_name;
+
+  // Domain boundaries for hyper cube. 
+  const double domain_left;
+  const double domain_right;
+
+  // Number of global refinements.
+  const unsigned int n_refine;
 
   // Polynomial degree.
   const unsigned int r;
