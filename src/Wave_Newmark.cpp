@@ -11,12 +11,12 @@ public:
   ExactSolution()
   {}
 
-  // Evaluation. u(x,y,t)=sin(πx)sin(πy)cos(t).
+  // Evaluation. u(x,y,t)=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ) * cos(t)
   virtual double
   value(const Point<dim> &p,
         const unsigned int /*component*/ = 0) const override
   {
-    return std::sin(M_PI * p[0]) * std::sin(M_PI * p[1]) *
+    return std::sin(M_PI * (p[0] + 1) / 2) * std::sin(M_PI * (p[1] + 1) / 2) *
            std::cos(this->get_time());
   }
 
@@ -45,11 +45,12 @@ main(int argc, char *argv[])
 {
   Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv);
 
+  // f(x,y,t) = (pi^2/2 - 1) * phi(x,y) * cos(t)
   const auto f  = [](const Point<dim>  &p, const double  &t) {
     return (2 * numbers::PI * numbers::PI - 1) *
-             std::cos(numbers::PI * t) * // std::cos(numbers::PI * this->get_time()) *
-             std::sin(numbers::PI * p[0]) *
-             std::sin(numbers::PI * p[1]);
+             std::cos(numbers::PI * t) *
+             std::sin(numbers::PI * (p[0] + 1) / 2) *
+             std::sin(numbers::PI * (p[1] + 1) / 2);
     return 0.0;
   };
 

@@ -43,7 +43,7 @@ public:
   // Physical dimension (1D, 2D, 3D)
   static constexpr unsigned int dim = 2;
 
-  // Initial condition. u0​=sin(πx)sin(πy)
+  // Initial condition. u0​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
   class FunctionU0 : public Function<dim>
   {
   public:
@@ -61,8 +61,8 @@ public:
 
       // return amplitude * std::exp(-(r*r)/ (2.0 * sigma * sigma));
 
-      return std::sin(numbers::PI * p[0]) *
-             std::sin(numbers::PI * p[1]);
+      return std::sin(numbers::PI * (p[0] + 1) / 2) *
+             std::sin(numbers::PI * (p[1] + 1) / 2);
     }
   };
 
@@ -94,9 +94,10 @@ public:
     value(const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
-      return (1/(0.25 * 0.01 * 0.01)) * // beta=0.25, delta_t=0.01
-             std::sin(numbers::PI * p[0]) *
-             std::sin(numbers::PI * p[1]);
+      return 0.0;
+      // return (1/(0.25 * 0.01 * 0.01)) * // beta=0.25, delta_t=0.01
+      //        std::sin(numbers::PI * p[0]) *
+      //        std::sin(numbers::PI * p[1]);
     }
   };
 
