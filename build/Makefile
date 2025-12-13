@@ -129,53 +129,53 @@ Wave_Newmark/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/build
 .PHONY : Wave_Newmark/fast
 
-src/Wave.o: src/Wave.cpp.o
-.PHONY : src/Wave.o
+Newmark/Wave.o: Newmark/Wave.cpp.o
+.PHONY : Newmark/Wave.o
 
 # target to build an object file
-src/Wave.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o
-.PHONY : src/Wave.cpp.o
+Newmark/Wave.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o
+.PHONY : Newmark/Wave.cpp.o
 
-src/Wave.i: src/Wave.cpp.i
-.PHONY : src/Wave.i
+Newmark/Wave.i: Newmark/Wave.cpp.i
+.PHONY : Newmark/Wave.i
 
 # target to preprocess a source file
-src/Wave.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.i
-.PHONY : src/Wave.cpp.i
+Newmark/Wave.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.i
+.PHONY : Newmark/Wave.cpp.i
 
-src/Wave.s: src/Wave.cpp.s
-.PHONY : src/Wave.s
+Newmark/Wave.s: Newmark/Wave.cpp.s
+.PHONY : Newmark/Wave.s
 
 # target to generate assembly for a file
-src/Wave.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.s
-.PHONY : src/Wave.cpp.s
+Newmark/Wave.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.s
+.PHONY : Newmark/Wave.cpp.s
 
-src/Wave_Newmark.o: src/Wave_Newmark.cpp.o
-.PHONY : src/Wave_Newmark.o
+Newmark/Wave_Newmark.o: Newmark/Wave_Newmark.cpp.o
+.PHONY : Newmark/Wave_Newmark.o
 
 # target to build an object file
-src/Wave_Newmark.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o
-.PHONY : src/Wave_Newmark.cpp.o
+Newmark/Wave_Newmark.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o
+.PHONY : Newmark/Wave_Newmark.cpp.o
 
-src/Wave_Newmark.i: src/Wave_Newmark.cpp.i
-.PHONY : src/Wave_Newmark.i
+Newmark/Wave_Newmark.i: Newmark/Wave_Newmark.cpp.i
+.PHONY : Newmark/Wave_Newmark.i
 
 # target to preprocess a source file
-src/Wave_Newmark.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.i
-.PHONY : src/Wave_Newmark.cpp.i
+Newmark/Wave_Newmark.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.i
+.PHONY : Newmark/Wave_Newmark.cpp.i
 
-src/Wave_Newmark.s: src/Wave_Newmark.cpp.s
-.PHONY : src/Wave_Newmark.s
+Newmark/Wave_Newmark.s: Newmark/Wave_Newmark.cpp.s
+.PHONY : Newmark/Wave_Newmark.s
 
 # target to generate assembly for a file
-src/Wave_Newmark.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.s
-.PHONY : src/Wave_Newmark.cpp.s
+Newmark/Wave_Newmark.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Wave_Newmark.dir/build.make CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.s
+.PHONY : Newmark/Wave_Newmark.cpp.s
 
 # Help Target
 help:
@@ -186,12 +186,12 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... Wave_Newmark"
-	@echo "... src/Wave.o"
-	@echo "... src/Wave.i"
-	@echo "... src/Wave.s"
-	@echo "... src/Wave_Newmark.o"
-	@echo "... src/Wave_Newmark.i"
-	@echo "... src/Wave_Newmark.s"
+	@echo "... Newmark/Wave.o"
+	@echo "... Newmark/Wave.i"
+	@echo "... Newmark/Wave.s"
+	@echo "... Newmark/Wave_Newmark.o"
+	@echo "... Newmark/Wave_Newmark.i"
+	@echo "... Newmark/Wave_Newmark.s"
 .PHONY : help
 
 

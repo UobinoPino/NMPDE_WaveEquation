@@ -605,3 +605,111 @@ events:
         
       exitCode: 0
 ...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1278 (try_compile)"
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1322 (_MPI_try_staged_settings)"
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1645 (_MPI_check_lang_works)"
+      - "common/cmake-common.cmake:16 (find_package)"
+      - "CMakeLists.txt:4 (include)"
+    description: "The MPI test test_mpi for C in mode normal"
+    directories:
+      source: "/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom"
+      binary: "/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "MPI_RESULT_C_test_mpi_normal"
+      cached: true
+      stdout: |
+        Change Dir: '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom'
+        
+        Run Build Command(s): /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/cmake -E env VERBOSE=1 /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/gmake -f Makefile cmTC_7d6e4/fast
+        gmake[1]: Entering directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom'
+        /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/gmake  -f CMakeFiles/cmTC_7d6e4.dir/build.make CMakeFiles/cmTC_7d6e4.dir/build
+        gmake[2]: Entering directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom'
+        Building C object CMakeFiles/cmTC_7d6e4.dir/test_mpi.c.o
+        /u/sw/toolchains/gcc-glibc/11.2.0/prefix/bin/gcc   -pthread -o CMakeFiles/cmTC_7d6e4.dir/test_mpi.c.o -c /home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom/test_mpi.c
+        Linking C executable cmTC_7d6e4
+        /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7d6e4.dir/link.txt --verbose=1
+        /u/sw/toolchains/gcc-glibc/11.2.0/prefix/bin/gcc -Wl,-rpath -Wl,/u/sw/toolchains/gcc-glibc/11.2.0/base/lib -Wl,-rpath -Wl,/u/sw/toolchains/gcc-glibc/11.2.0/base/lib -Wl,--enable-new-dtags -pthread CMakeFiles/cmTC_7d6e4.dir/test_mpi.c.o -o cmTC_7d6e4  /u/sw/toolchains/gcc-glibc/11.2.0/base/lib/libmpi.so 
+        gmake[2]: Leaving directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom'
+        gmake[1]: Leaving directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-BmdZom'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1278 (try_compile)"
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1322 (_MPI_try_staged_settings)"
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1645 (_MPI_check_lang_works)"
+      - "common/cmake-common.cmake:16 (find_package)"
+      - "CMakeLists.txt:4 (include)"
+    description: "The MPI test test_mpi for CXX in mode normal"
+    directories:
+      source: "/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE"
+      binary: "/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "MPI_RESULT_CXX_test_mpi_normal"
+      cached: true
+      stdout: |
+        Change Dir: '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE'
+        
+        Run Build Command(s): /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/cmake -E env VERBOSE=1 /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/gmake -f Makefile cmTC_f63f2/fast
+        gmake[1]: Entering directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE'
+        /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/gmake  -f CMakeFiles/cmTC_f63f2.dir/build.make CMakeFiles/cmTC_f63f2.dir/build
+        gmake[2]: Entering directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE'
+        Building CXX object CMakeFiles/cmTC_f63f2.dir/test_mpi.cpp.o
+        /u/sw/toolchains/gcc-glibc/11.2.0/prefix/bin/g++   -std=gnu++17 -pthread -o CMakeFiles/cmTC_f63f2.dir/test_mpi.cpp.o -c /home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE/test_mpi.cpp
+        Linking CXX executable cmTC_f63f2
+        /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f63f2.dir/link.txt --verbose=1
+        /u/sw/toolchains/gcc-glibc/11.2.0/prefix/bin/g++ -Wl,-rpath -Wl,/u/sw/toolchains/gcc-glibc/11.2.0/base/lib -Wl,-rpath -Wl,/u/sw/toolchains/gcc-glibc/11.2.0/base/lib -Wl,--enable-new-dtags -pthread CMakeFiles/cmTC_f63f2.dir/test_mpi.cpp.o -o cmTC_f63f2  /u/sw/toolchains/gcc-glibc/11.2.0/base/lib/libmpi.so 
+        gmake[2]: Leaving directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE'
+        gmake[1]: Leaving directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-pjAmDE'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1278 (try_compile)"
+      - "/u/sw/toolchains/gcc-glibc/11.2.0/base/share/cmake-3.28/Modules/FindMPI.cmake:1672 (_MPI_try_staged_settings)"
+      - "common/cmake-common.cmake:16 (find_package)"
+      - "CMakeLists.txt:4 (include)"
+    description: "The MPI test test_mpi for CXX in mode MPICXX"
+    directories:
+      source: "/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD"
+      binary: "/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "MPI_RESULT_CXX_test_mpi_MPICXX"
+      cached: true
+      stdout: |
+        Change Dir: '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD'
+        
+        Run Build Command(s): /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/cmake -E env VERBOSE=1 /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/gmake -f Makefile cmTC_ed37a/fast
+        gmake[1]: Entering directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD'
+        /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/gmake  -f CMakeFiles/cmTC_ed37a.dir/build.make CMakeFiles/cmTC_ed37a.dir/build
+        gmake[2]: Entering directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD'
+        Building CXX object CMakeFiles/cmTC_ed37a.dir/test_mpi.cpp.o
+        /u/sw/toolchains/gcc-glibc/11.2.0/prefix/bin/g++   -std=gnu++17 -pthread -o CMakeFiles/cmTC_ed37a.dir/test_mpi.cpp.o -c /home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD/test_mpi.cpp
+        Linking CXX executable cmTC_ed37a
+        /u/sw/toolchains/gcc-glibc/11.2.0/base/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ed37a.dir/link.txt --verbose=1
+        /u/sw/toolchains/gcc-glibc/11.2.0/prefix/bin/g++ -Wl,-rpath -Wl,/u/sw/toolchains/gcc-glibc/11.2.0/base/lib -Wl,-rpath -Wl,/u/sw/toolchains/gcc-glibc/11.2.0/base/lib -Wl,--enable-new-dtags -pthread CMakeFiles/cmTC_ed37a.dir/test_mpi.cpp.o -o cmTC_ed37a  /u/sw/toolchains/gcc-glibc/11.2.0/base/lib/libmpi.so 
+        gmake[2]: Leaving directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD'
+        gmake[1]: Leaving directory '/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/CMakeScratch/TryCompile-X2qftD'
+        
+      exitCode: 0
+...

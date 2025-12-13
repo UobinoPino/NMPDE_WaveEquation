@@ -69,44 +69,44 @@ include CMakeFiles/Wave_Newmark.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/Wave_Newmark.dir/flags.make
 
-CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o: CMakeFiles/Wave_Newmark.dir/flags.make
-CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o: /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave_Newmark.cpp
-CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o: CMakeFiles/Wave_Newmark.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o"
-	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o -MF CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o.d -o CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o -c /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave_Newmark.cpp
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o: CMakeFiles/Wave_Newmark.dir/flags.make
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o: /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave_Newmark.cpp
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o: CMakeFiles/Wave_Newmark.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o"
+	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o -MF CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o.d -o CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o -c /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave_Newmark.cpp
 
-CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.i"
-	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave_Newmark.cpp > CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.i
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.i"
+	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave_Newmark.cpp > CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.i
 
-CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.s"
-	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave_Newmark.cpp -o CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.s
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.s"
+	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave_Newmark.cpp -o CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.s
 
-CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o: CMakeFiles/Wave_Newmark.dir/flags.make
-CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o: /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave.cpp
-CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o: CMakeFiles/Wave_Newmark.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o"
-	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o -MF CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o.d -o CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o -c /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave.cpp
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o: CMakeFiles/Wave_Newmark.dir/flags.make
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o: /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave.cpp
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o: CMakeFiles/Wave_Newmark.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o"
+	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o -MF CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o.d -o CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o -c /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave.cpp
 
-CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.i"
-	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave.cpp > CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.i
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.i"
+	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave.cpp > CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.i
 
-CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.s"
-	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marzeni/progetti/pde/NMPDE_WaveEquation/src/Wave.cpp -o CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.s
+CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.s"
+	/u/sw/toolchains/gcc-glibc/11.2.0/base/bin/mpicxx $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marzeni/progetti/pde/NMPDE_WaveEquation/Newmark/Wave.cpp -o CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.s
 
 # Object files for target Wave_Newmark
 Wave_Newmark_OBJECTS = \
-"CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o" \
-"CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o"
+"CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o" \
+"CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o"
 
 # External object files for target Wave_Newmark
 Wave_Newmark_EXTERNAL_OBJECTS =
 
-Wave_Newmark: CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o
-Wave_Newmark: CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o
+Wave_Newmark: CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o
+Wave_Newmark: CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o
 Wave_Newmark: CMakeFiles/Wave_Newmark.dir/build.make
 Wave_Newmark: /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/lib/libdeal_II.so.9.5.1
 Wave_Newmark: /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/boost/1.76.0/lib/libboost_iostreams.so

@@ -1,8 +1,8 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o"
-  "CMakeFiles/Wave_Newmark.dir/src/Wave.cpp.o.d"
-  "CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o"
-  "CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o.d"
+  "CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o"
+  "CMakeFiles/Wave_Newmark.dir/Newmark/Wave.cpp.o.d"
+  "CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o"
+  "CMakeFiles/Wave_Newmark.dir/Newmark/Wave_Newmark.cpp.o.d"
   "Wave_Newmark"
   "Wave_Newmark.pdb"
 )

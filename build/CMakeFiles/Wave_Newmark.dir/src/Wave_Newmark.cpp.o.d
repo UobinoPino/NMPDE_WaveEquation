@@ -1889,6 +1889,10 @@ CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o: \
  /u/sw/toolchains/gcc-glibc/11.2.0/prefix/lib/gcc/x86_64-mk-linux/11.2.0/include/fma4intrin.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/prefix/lib/gcc/x86_64-mk-linux/11.2.0/include/ammintrin.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/prefix/lib/gcc/x86_64-mk-linux/11.2.0/include/xopintrin.h \
+ /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/fe/fe_q.h \
+ /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/base/tensor_product_polynomials.h \
+ /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/base/polynomial.h \
+ /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/fe/fe_q_base.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/grid/grid_generator.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/cgal/additional_data.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/grid/grid_in.h \
@@ -2807,7 +2811,6 @@ CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o: \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/hp/mapping_collection.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/fe/mapping_q1.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/fe/mapping_q.h \
- /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/base/polynomial.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/matrix_free/shape_info.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/matrix_free/tensor_product_kernels.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/numerics/data_postprocessor.h \
@@ -2937,7 +2940,6 @@ CMakeFiles/Wave_Newmark.dir/src/Wave_Newmark.cpp.o: \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/matrix_free/mapping_info_storage.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/non_matching/mapping_info.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/fe/fe_dgq.h \
- /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/base/tensor_product_polynomials.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/fe/mapping_cartesian.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/base/qprojector.h \
  /u/sw/toolchains/gcc-glibc/11.2.0/pkgs/dealii/9.5.1/include/deal.II/numerics/vector_tools_integrate_difference.h \
