@@ -53,7 +53,7 @@ public:
 
     // Evaluation of the function.
     virtual double
-    value(const Point<dim> &p,
+    value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
       // const double r = p.norm();
@@ -76,7 +76,7 @@ public:
 
     // Evaluation of the function.
     virtual double
-    value(const Point<dim> &p,
+    value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
       return 0.0;
@@ -92,7 +92,7 @@ public:
 
     // Evaluation of the function.
     virtual double
-    value(const Point<dim> &p,
+    value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
       return std::sin(numbers::PI * (p[0] + 1) / 2) *
@@ -116,7 +116,7 @@ public:
 
     // Evaluation.
     virtual double
-    value(const Point<dim> &p,
+    value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
       return 0.0;
