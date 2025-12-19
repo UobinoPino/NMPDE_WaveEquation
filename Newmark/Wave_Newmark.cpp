@@ -73,11 +73,15 @@ main(int argc, char *argv[])
 
   const auto f  = [](const Point<dim>  &p, const double  &t) {
 
-    // EX1: f(x,y,t) = (pi^2/2 - 1) * phi(x,y) * cos(t)
-    return (2 * numbers::PI * numbers::PI - 1) *
-             std::cos(numbers::PI * t) *
-             std::sin(numbers::PI * (p[0] + 1) / 2) *
-             std::sin(numbers::PI * (p[1] + 1) / 2);
+    // EX1: f(x,y,t) = (π²/2 - 1) * φ(x,y) * cos(t)
+    // where φ(x,y) = sin(π(x+1)/2) * sin(π(y+1)/2)
+    
+    const double pi = numbers::PI;
+    const double phi = std::sin(pi * (p[0] + 1) / 2) *
+                       std::sin(pi * (p[1] + 1) / 2);
+
+    return (pi * pi / 2.0 - 1.0) * phi * std::cos(t);
+
   //   // EX2: f(x,y,t) = [ 4*r^2 - 4 - 1 ] * exp( -r^2 ) * cos(t - r) + [ 4*r - 2/r ] * exp( -r^2 ) * sin(t - r)
   //   const double r2 = p[0]*p[0] + p[1]*p[1];
   //   const double r  = std::sqrt(r2);
@@ -101,7 +105,7 @@ main(int argc, char *argv[])
                 1.0,     // domain_right  
                 5,       // n_refine (number of global refinements - controls mesh precision)
                /* degree = */ 1,
-               /* T = */ 7.0,
+               /* T = */ 1.0,
                /* beta = */ 0.25,
                /* gamma = */ 0.5,
                /* delta_t = */ 0.01,

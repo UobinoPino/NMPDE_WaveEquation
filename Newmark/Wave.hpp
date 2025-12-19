@@ -97,9 +97,9 @@ public:
     value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
-      // EX1: u2​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
-      return std::sin(numbers::PI * (p[0] + 1) / 2) *
-             std::sin(numbers::PI * (p[1] + 1) / 2); 
+      // EX1: u2​= - (sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ))
+      return - (std::sin(numbers::PI * (p[0] + 1) / 2) *
+                std::sin(numbers::PI * (p[1] + 1) / 2));
       // return (1/(0.25 * 0.01 * 0.01)) * // beta=0.25, delta_t=0.01
       //        std::sin(numbers::PI * p[0]) *
       //        std::sin(numbers::PI * p[1]);
