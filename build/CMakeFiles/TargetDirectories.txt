@@ -1,3 +1,0 @@
-/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/Wave_Newmark.dir
-/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/edit_cache.dir
-/home/marzeni/progetti/pde/NMPDE_WaveEquation/build/CMakeFiles/rebuild_cache.dir
