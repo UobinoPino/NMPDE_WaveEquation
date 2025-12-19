@@ -44,7 +44,7 @@ public:
   // Physical dimension (1D, 2D, 3D)
   static constexpr unsigned int dim = 2;
 
-  // Initial condition. u0​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
+  // Initial condition.
   class FunctionU0 : public Function<dim>
   {
   public:
@@ -62,12 +62,13 @@ public:
 
       // return amplitude * std::exp(-(r*r)/ (2.0 * sigma * sigma));
 
+      // EX1: u0​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
       return std::sin(numbers::PI * (p[0] + 1) / 2) *
              std::sin(numbers::PI * (p[1] + 1) / 2);
     }
   };
 
-    // Initial condition. u1​=0
+    // Initial condition
   class FunctionU1 : public Function<dim>
   {
   public:
@@ -79,11 +80,12 @@ public:
     value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
+      // EX1: u1​=0.0
       return 0.0;
     }
   };
 
-      // Initial condition. u2​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
+      // Initial condition.
   class FunctionU2 : public Function<dim>
   {
   public:
@@ -95,6 +97,7 @@ public:
     value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
+      // EX1: u2​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
       return std::sin(numbers::PI * (p[0] + 1) / 2) *
              std::sin(numbers::PI * (p[1] + 1) / 2); 
       // return (1/(0.25 * 0.01 * 0.01)) * // beta=0.25, delta_t=0.01
@@ -119,6 +122,7 @@ public:
     value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
+      // EX1: g=0.0
       return 0.0;
     }
   };

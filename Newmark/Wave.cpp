@@ -286,7 +286,7 @@ Wave::run(Function<dim> *exact_solution){
     VectorTools::interpolate(dof_handler, FunctionU1(), velocity_owned);
     velocity = velocity_owned;
 
-    // Also initialize the acceleration with the initial condition u_2. // METTO u_2 = 0 nell'hpp
+    // Also initialize the acceleration with the initial condition u_2. //
     VectorTools::interpolate(dof_handler, FunctionU2(), acceleration_owned);
     acceleration = acceleration_owned;
 
@@ -373,14 +373,13 @@ Wave::compute_error(const VectorTools::NormType &norm_type,
   Assert(dof_handler.n_dofs() == solution.size(), ExcMessage("solution size != n_dofs"));
   Assert(mesh.n_active_cells() > 0, ExcMessage("mesh has no active cells"));
 
-  // Usa una quadratura accurata
-  QGaussSimplex<dim> quadrature_error(r + 2);
+  // Use Gauss quadrature for hypercube meshes (NOT QGaussSimplex!)
+  QGauss<dim> quadrature_error(r + 2);
 
-  // Per triangoli, come nel tuo esempio:
-  FE_SimplexP<dim> fe_linear(1);
-  MappingFE        mapping(fe_linear);
+  // Use MappingQ1 or MappingQ for hypercube meshes (NOT MappingFE with FE_SimplexP!)
+  MappingQ<dim> mapping(1);
 
-  // Imposta il tempo corrente anche nella soluzione esatta
+  // Set current time for the exact solution
   exact_solution.set_time(time);
 
   Vector<double> error_per_cell(mesh.n_active_cells());
