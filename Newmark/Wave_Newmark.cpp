@@ -16,10 +16,17 @@ public:
   value(const Point<dim> &p,
         const unsigned int /*component*/ = 0) const override
   {
-    // EX1: u(x,y,t) = sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ) * cos(t)
-    return std::sin(M_PI * (p[0] + 1) / 2) * std::sin(M_PI * (p[1] + 1) / 2) *
-           std::cos(this->get_time());
-    // // EX2: u(x,y,t) = exp( -r(x,y)^2 ) * cos(t - r(x,y))
+    // // EX1: u(x,y,t) = sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ) * cos(t)
+    // return std::sin(M_PI * (p[0] + 1) / 2) * std::sin(M_PI * (p[1] + 1) / 2) *
+    //        std::cos(this->get_time());
+          
+    // EX2: sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ) * cos(pi / sqrt(2) * t)
+    const double time_factor = std::cos(numbers::PI / std::sqrt(2) * this->get_time());
+    return std::sin(numbers::PI * (p[0] + 1) / 2) *
+           std::sin(numbers::PI * (p[1] + 1) / 2) *
+           time_factor;
+
+    // // EX?: u(x,y,t) = exp( -r(x,y)^2 ) * cos(t - r(x,y))
     // return std::exp( - (p[0]*p[0] + p[1]*p[1]) ) *
     //        std::cos( this->get_time() - std::sqrt(p[0]*p[0] + p[1]*p[1]) );
   }
@@ -32,14 +39,22 @@ public:
   {
     Tensor<1, dim> result;
 
-    // EX1: ∂u/∂x = π*0.5 cos(pi*(x+1)/2) sin(pi*(y+1)/2) cos(t)
-    const double time_factor = std::cos(this->get_time());
-    result[0] = M_PI * 0.5 * std::cos(M_PI * (p[0] + 1) / 2) * std::sin(M_PI * (p[1] + 1) / 2) * time_factor;
-    // EX1: ∂u/∂y = π*0.5 sin(pi*(x+1)/2) cos(pi*(y+1)/2) cos(t)
-    result[1] = M_PI * 0.5 * std::sin(M_PI * (p[0] + 1) / 2) * std::cos(M_PI * (p[1] + 1) / 2) * time_factor;
+    // // EX1: ∂u/∂x = π*0.5 cos(pi*(x+1)/2) sin(pi*(y+1)/2) cos(t)
+    // const double time_factor = std::cos(this->get_time());
+    // result[0] = M_PI * 0.5 * std::cos(M_PI * (p[0] + 1) / 2) * std::sin(M_PI * (p[1] + 1) / 2) * time_factor;
+    // // EX1: ∂u/∂y = π*0.5 sin(pi*(x+1)/2) cos(pi*(y+1)/2) cos(t)
+    // result[1] = M_PI * 0.5 * std::sin(M_PI * (p[0] + 1) / 2) * std::cos(M_PI * (p[1] + 1) / 2) * time_factor;
 
-    // // EX2: u_x(x,y,t) = ( x / r ) * exp( -r^2 ) * [ sin(t - r) - 2*r*cos(t - r) ]
-    // // EX2: u_y(x,y,t) = ( y / r ) * exp( -r^2 ) * [ sin(t - r) - 2*r*cos(t - r) ]
+    // EX2: ∂u/∂x = π*0.5 cos(pi*(x+1)/2) sin(pi*(y+1)/2) * cos(pi/sqrt(2)*t)
+    const double time_factor = std::cos(numbers::PI / std::sqrt(2) * this->get_time());
+    result[0] = numbers::PI * 0.5 * std::cos(numbers::PI * (p[0] + 1) / 2) *
+                std::sin(numbers::PI * (p[1] + 1) / 2) * time_factor;
+    // EX2: ∂u/∂y = π*0.5 sin(pi*(x+1)/2) cos(pi*(y+1)/2) * cos(pi/sqrt(2)*t)
+    result[1] = numbers::PI * 0.5 * std::sin(numbers::PI * (p[0] + 1) / 2) *
+                std::cos(numbers::PI * (p[1] + 1) / 2) * time_factor;
+
+    // // EX?: u_x(x,y,t) = ( x / r ) * exp( -r^2 ) * [ sin(t - r) - 2*r*cos(t - r) ]
+    // // EX?: u_y(x,y,t) = ( y / r ) * exp( -r^2 ) * [ sin(t - r) - 2*r*cos(t - r) ]
 
     // const double r2 = p[0]*p[0] + p[1]*p[1];
     // const double r  = std::sqrt(r2);
@@ -73,16 +88,20 @@ main(int argc, char *argv[])
 
   const auto f  = [](const Point<dim>  &p, const double  &t) {
 
-    // EX1: f(x,y,t) = (π²/2 - 1) * φ(x,y) * cos(t)
-    // where φ(x,y) = sin(π(x+1)/2) * sin(π(y+1)/2)
+    // // EX1: f(x,y,t) = (π²/2 - 1) * φ(x,y) * cos(t)
+    // // where φ(x,y) = sin(π(x+1)/2) * sin(π(y+1)/2)
     
-    const double pi = numbers::PI;
-    const double phi = std::sin(pi * (p[0] + 1) / 2) *
-                       std::sin(pi * (p[1] + 1) / 2);
+    // const double pi = numbers::PI;
+    // const double phi = std::sin(pi * (p[0] + 1) / 2) *
+    //                    std::sin(pi * (p[1] + 1) / 2);
 
-    return (pi * pi / 2.0 - 1.0) * phi * std::cos(t);
+    // return (pi * pi / 2.0 - 1.0) * phi * std::cos(t);
 
-  //   // EX2: f(x,y,t) = [ 4*r^2 - 4 - 1 ] * exp( -r^2 ) * cos(t - r) + [ 4*r - 2/r ] * exp( -r^2 ) * sin(t - r)
+    // EX2: f(x,y,t) = (π²/2 - π²/2) * φ(x,y) * cos(π/√2 * t) = 0
+    // where φ(x,y) = sin(π(x+1)/2) * sin(π(y+1)/2)
+    return 0.0;
+
+  //   // EX?: f(x,y,t) = [ 4*r^2 - 4 - 1 ] * exp( -r^2 ) * cos(t - r) + [ 4*r - 2/r ] * exp( -r^2 ) * sin(t - r)
   //   const double r2 = p[0]*p[0] + p[1]*p[1];
   //   const double r  = std::sqrt(r2);
   //   const double exp_factor = std::exp(-r2);

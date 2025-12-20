@@ -62,7 +62,7 @@ public:
 
       // return amplitude * std::exp(-(r*r)/ (2.0 * sigma * sigma));
 
-      // EX1: u0​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
+      // EX1 = EX2: u0​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ) 
       return std::sin(numbers::PI * (p[0] + 1) / 2) *
              std::sin(numbers::PI * (p[1] + 1) / 2);
     }
@@ -80,7 +80,7 @@ public:
     value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
-      // EX1: u1​=0.0
+      // EX1 = EX2: u1​=0.0
       return 0.0;
     }
   };
@@ -97,9 +97,14 @@ public:
     value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
-      // EX1: u2​= - (sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ))
-      return - (std::sin(numbers::PI * (p[0] + 1) / 2) *
-                std::sin(numbers::PI * (p[1] + 1) / 2));
+      // // EX1: u2​= - (sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ))
+      // return - (std::sin(numbers::PI * (p[0] + 1) / 2) *
+      //           std::sin(numbers::PI * (p[1] + 1) / 2));
+
+      // EX2: u2 = - pi*pi * 0.5 * sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
+      return - (numbers::PI * numbers::PI * 0.5) *
+             (std::sin(numbers::PI * (p[0] + 1) / 2) *
+              std::sin(numbers::PI * (p[1] + 1) / 2));
       // return (1/(0.25 * 0.01 * 0.01)) * // beta=0.25, delta_t=0.01
       //        std::sin(numbers::PI * p[0]) *
       //        std::sin(numbers::PI * p[1]);
@@ -122,7 +127,7 @@ public:
     value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
-      // EX1: g=0.0
+      // EX1 = EX2: g=0.0
       return 0.0;
     }
   };
