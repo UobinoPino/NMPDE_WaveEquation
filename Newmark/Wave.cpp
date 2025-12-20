@@ -85,8 +85,18 @@ Wave::setup()
     velocity.reinit(locally_owned_dofs, locally_relevant_dofs, MPI_COMM_WORLD);
     acceleration_owned.reinit(locally_owned_dofs, MPI_COMM_WORLD);
     acceleration.reinit(locally_owned_dofs, locally_relevant_dofs, MPI_COMM_WORLD);
+
+    // Initialize mass and stiffness matrices for energy computation.
+    pcout << "  Initializing the mass matrix" << std::endl;
+    mass_matrix.reinit(sparsity);
+
+    pcout << "  Initializing the stiffness matrix" << std::endl;
+    stiffness_matrix.reinit(sparsity);
   
   }
+
+  pcout << "-----------------------------------------------" << std::endl;
+
 }
 
 void
@@ -107,11 +117,18 @@ Wave::assemble()
   FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
   Vector<double>     cell_rhs(dofs_per_cell);
 
+  // Additional matrices for mass and stiffness for energy computation
+  FullMatrix<double> cell_mass_matrix(dofs_per_cell, dofs_per_cell);
+  FullMatrix<double> cell_stiffness_matrix(dofs_per_cell, dofs_per_cell);
+  
+
   std::vector<types::global_dof_index> dof_indices(dofs_per_cell);
 
   // Reset the global matrix and vector, just in case.
   system_matrix = 0.0;
   system_rhs    = 0.0;
+  mass_matrix      = 0.0;
+  stiffness_matrix = 0.0;
 
   // Evaluation of the old solution on quadrature nodes of current cell.
   std::vector<double> solution_old_values(n_q);
@@ -169,6 +186,18 @@ Wave::assemble()
                   cell_matrix(i, j) +=  scalar_product(fe_values.shape_grad(i, q),
                                                       fe_values.shape_grad(j, q)) * //
                                         fe_values.JxW(q);
+                  
+                  // For energy computation:
+                  // Mass matrix:  M_ij = (phi_i, phi_j)
+                  cell_mass_matrix(i, j) += fe_values.shape_value(i, q) *
+                                            fe_values.shape_value(j, q) *
+                                            fe_values.JxW(q);
+
+                  // Stiffness matrix:  A_ij = (grad phi_i, grad phi_j)
+                  cell_stiffness_matrix(i, j) += 
+                      scalar_product(fe_values.shape_grad(i, q),
+                                     fe_values.shape_grad(j, q)) *
+                      fe_values. JxW(q);
                 }
 
               // Time derivative.
@@ -185,17 +214,25 @@ Wave::assemble()
                 fe_values.JxW(q);
             }
         }
-// FIN QUI 
+
       cell->get_dof_indices(dof_indices);
 
       system_matrix.add(dof_indices, cell_matrix);
       system_rhs.add(dof_indices, cell_rhs);
+
+      // Assemble global mass and stiffness matrices for energy computation
+      mass_matrix.add(dof_indices, cell_mass_matrix);
+      stiffness_matrix.add(dof_indices, cell_stiffness_matrix);
     }
 
   system_matrix.compress(VectorOperation::add);
   system_rhs.compress(VectorOperation::add);
 
-    // DIRICHLET DI CHAT
+  // Also compress mass and stiffness matrices for energy computation
+  mass_matrix.compress(VectorOperation::add);
+  stiffness_matrix.compress(VectorOperation::add);
+
+
     // ------------------- Dirichlet boundary conditions -------------------
   {
       std::map<types::global_dof_index, double> boundary_values;
@@ -274,6 +311,14 @@ Wave::run(Function<dim> *exact_solution){
     error_file << "time,L2_error,H1_error\n";
   }
 
+  // Open a file to save energy history (only on process 0)
+  std::ofstream energy_file;
+  if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+  {
+    energy_file.open("energy.csv");
+    energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
+  }
+
   // Setup initial conditions.
   {
     setup();
@@ -289,6 +334,9 @@ Wave::run(Function<dim> *exact_solution){
     // Also initialize the acceleration with the initial condition u_2. //
     VectorTools::interpolate(dof_handler, FunctionU2(), acceleration_owned);
     acceleration = acceleration_owned;
+
+    // Vector to store energy over time
+    std::vector<std::pair<double, double>> energy_history;
 
     time            = 0.0;
     timestep_number = 0;
@@ -315,7 +363,7 @@ Wave::run(Function<dim> *exact_solution){
       assemble();
       solve_linear_system();
 
-          // Compute errors at current time
+      // Compute errors at current time
 
       int error_interval = 10; // Compute every N time steps
       if (exact_solution != nullptr && timestep_number % error_interval == 0)
@@ -355,6 +403,17 @@ Wave::run(Function<dim> *exact_solution){
       // solution vector.
       solution = solution_owned;
 
+      // Compute and save energy
+      // Note: We need the matrices to be assembled without BC modifications
+      // for accurate energy computation.
+      const double E = compute_total_energy();
+      
+      if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+      {
+        energy_file << time << "," << E << "\n";
+        pcout << "Energy = " << E << std::endl;
+      }
+
       output();
     }
 
@@ -362,6 +421,11 @@ Wave::run(Function<dim> *exact_solution){
     if (error_file.is_open())
     {
       error_file.close();
+    }
+    // Close energy file
+    if (energy_file.is_open())
+    {
+      energy_file.close();
     }
 }
 
@@ -397,4 +461,28 @@ Wave::compute_error(const VectorTools::NormType &norm_type,
                                         norm_type);
 
   return error;
+}
+
+
+// Compute total energy:  E = 0.5 * (v^T M v + u^T A u)
+double
+Wave::compute_total_energy() const
+{
+  // Create temporary vectors for matrix-vector products
+  TrilinosWrappers::MPI:: Vector Mv(velocity_owned);
+  TrilinosWrappers:: MPI::Vector Au(solution_owned);
+
+  // Compute M * v
+  mass_matrix.vmult(Mv, velocity_owned);
+
+  // Compute A * u  
+  stiffness_matrix.vmult(Au, solution_owned);
+
+  // Compute kinetic energy:  0.5 * v^T * M * v
+  const double kinetic = 0.5 * (velocity_owned * Mv);
+
+  // Compute potential energy: 0.5 * u^T * A * u
+  const double potential = 0.5 * (solution_owned * Au);
+
+  return kinetic + potential;
 }

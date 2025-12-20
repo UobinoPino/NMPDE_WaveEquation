@@ -197,6 +197,9 @@ protected:
   void
   output() const;
 
+  // Compute total energy:  E = 0.5 * (v^T M v + u^T A u)
+  double compute_total_energy() const;
+
   // // Name of the mesh.
   // const std::string mesh_file_name;
 
@@ -272,6 +275,10 @@ protected:
 
   // Acceleration, with ghost elements.
   TrilinosWrappers::MPI::Vector acceleration;
+
+  // Mass and stiffness matrices for energy computation
+  TrilinosWrappers::SparseMatrix mass_matrix;
+  TrilinosWrappers::SparseMatrix stiffness_matrix;
 
   // Output stream for process 0.
   ConditionalOStream pcout;
