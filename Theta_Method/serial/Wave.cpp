@@ -6,7 +6,8 @@ Wave::Wave(const unsigned int degree_,
            const double       delta_t_,
            const double       domain_left_,
            const double       domain_right_,
-           const unsigned int n_refine_)
+           const unsigned int n_refine_,
+           const TestCase     test_case_)
   : degree(degree_)
   , T(T_)
   , theta(theta_)
@@ -14,17 +15,18 @@ Wave::Wave(const unsigned int degree_,
   , domain_left(domain_left_)
   , domain_right(domain_right_)
   , n_refine(n_refine_)
+  , test_case(test_case_)
   , time(delta_t_)
   , timestep_number(1)
   , fe(degree_)
   , dof_handler(triangulation)
 {}
 
-void
-Wave::setup_system()
+void Wave::setup_system()
 {
   std::cout << "===============================================" << std::endl;
   std::cout << "Setting up the system" << std::endl;
+  std::cout << "Test case: EX" << test_case << std::endl;
 
   // Create the mesh.
   {
@@ -78,8 +80,7 @@ Wave::setup_system()
   std::cout << "===============================================" << std::endl;
 }
 
-void
-Wave::solve_u()
+void Wave::solve_u()
 {
   SolverControl            solver_control(1000, 1e-8 * system_rhs.l2_norm());
   SolverCG<Vector<double>> cg(solver_control);
@@ -90,8 +91,7 @@ Wave::solve_u()
             << " CG iterations." << std::endl;
 }
 
-void
-Wave::solve_v()
+void Wave::solve_v()
 {
   SolverControl            solver_control(1000, 1e-8 * system_rhs.l2_norm());
   SolverCG<Vector<double>> cg(solver_control);
@@ -102,8 +102,7 @@ Wave::solve_v()
             << " CG iterations." << std::endl;
 }
 
-void
-Wave::output_results() const
+void Wave::output_results() const
 {
   DataOut<dim> data_out;
 
@@ -124,20 +123,32 @@ Wave::output_results() const
   data_out.write_vtu(output);
 }
 
-double
-Wave::compute_error(const VectorTools::NormType &norm_type,
+double Wave::compute_error(const VectorTools::NormType &norm_type,
                     Function<dim>               &exact_solution) const
 {
+  // Assertions for safety (matching Newmark style)
+  Assert(dof_handler.n_dofs() == solution_u.size(),
+         ExcMessage("solution size != n_dofs"));
+  Assert(triangulation.n_active_cells() > 0,
+         ExcMessage("mesh has no active cells"));
+
+  // Use Gauss quadrature for hypercube meshes
+  QGauss<dim> quadrature_error(fe.degree + 2);
+
+  // Use MappingQ for hypercube meshes (matching Newmark style)
+  MappingQ<dim> mapping(1);
+
   // Set the time for the exact solution
   exact_solution.set_time(time);
 
   Vector<double> error_per_cell(triangulation.n_active_cells());
 
-  VectorTools::integrate_difference(dof_handler,
+  VectorTools::integrate_difference(mapping,
+                                    dof_handler,
                                     solution_u,
                                     exact_solution,
                                     error_per_cell,
-                                    QGauss<dim>(fe.degree + 2),
+                                    quadrature_error,
                                     norm_type);
 
   const double error = VectorTools::compute_global_error(triangulation,
@@ -146,8 +157,30 @@ Wave::compute_error(const VectorTools::NormType &norm_type,
   return error;
 }
 
-void
-Wave::run(Function<dim> *exact_solution)
+double Wave::compute_total_energy() const
+{
+  // Compute total energy: E = 0.5 * (v^T M v + u^T A u)
+  // where M is mass matrix and A is stiffness (laplace) matrix
+
+  Vector<double> Mv(solution_v.size());
+  Vector<double> Au(solution_u.size());
+
+  // Compute M * v
+  mass_matrix.vmult(Mv, solution_v);
+
+  // Compute A * u
+  laplace_matrix.vmult(Au, solution_u);
+
+  // Compute kinetic energy: 0.5 * v^T * M * v
+  const double kinetic_energy = 0.5 * (solution_v * Mv);
+
+  // Compute potential energy: 0.5 * u^T * A * u
+  const double potential_energy = 0.5 * (solution_u * Au);
+
+  return kinetic_energy + potential_energy;
+}
+
+void Wave::run(Function<dim> *exact_solution)
 {
   setup_system();
 
@@ -158,6 +191,11 @@ Wave::run(Function<dim> *exact_solution)
     error_file.open("errors.csv");
     error_file << "time,L2_error,H1_error\n";
   }
+
+  // Open a file to save energy history
+  std::ofstream energy_file;
+  energy_file.open("energy.csv");
+  energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
 
   // Project initial conditions.
   VectorTools::project(dof_handler,
@@ -173,6 +211,13 @@ Wave::run(Function<dim> *exact_solution)
 
   Vector<double> tmp(solution_u.size());
   Vector<double> forcing_terms(solution_u.size());
+
+  // Create appropriate forcing function based on test case
+  std::unique_ptr<Function<dim>> rhs_function;
+  if (test_case == EX1)
+    rhs_function = std::make_unique<RightHandSideEX1>();
+  else
+    rhs_function = std::make_unique<RightHandSideEX2>();
 
   std::cout << std::endl;
   std::cout << "Starting time-stepping loop..." << std::endl;
@@ -196,19 +241,18 @@ Wave::run(Function<dim> *exact_solution)
       system_rhs.add(-theta * (1 - theta) * delta_t * delta_t, tmp);
 
       // Forcing terms.
-      RightHandSide rhs_function;
-      rhs_function.set_time(time);
+      rhs_function->set_time(time);
       VectorTools::create_right_hand_side(dof_handler,
                                           QGauss<dim>(fe.degree + 1),
-                                          rhs_function,
+                                          *rhs_function,
                                           tmp);
       forcing_terms = tmp;
       forcing_terms *= theta * delta_t;
 
-      rhs_function.set_time(time - delta_t);
+      rhs_function->set_time(time - delta_t);
       VectorTools::create_right_hand_side(dof_handler,
                                           QGauss<dim>(fe.degree + 1),
-                                          rhs_function,
+                                          *rhs_function,
                                           tmp);
       forcing_terms.add((1 - theta) * delta_t, tmp);
 
@@ -273,12 +317,24 @@ Wave::run(Function<dim> *exact_solution)
 
       output_results();
 
-      // Compute and output energy.
-      const double energy = (mass_matrix.matrix_norm_square(solution_v) +
-                             laplace_matrix.matrix_norm_square(solution_u)) /
-                            2.0;
-      std::cout << "   Total energy: " << energy << std::endl;
+      // Compute and output energy using the Newmark formula:
+      // E = 0.5 * (v^T M v + u^T A u)
+      Vector<double> Mv(solution_v.size());
+      Vector<double> Au(solution_u.size());
+      mass_matrix.vmult(Mv, solution_v);
+      laplace_matrix.vmult(Au, solution_u);
+      const double kinetic_energy = 0.5 * (solution_v * Mv);
+      const double potential_energy = 0.5 * (solution_u * Au);
+      const double total_energy = kinetic_energy + potential_energy;
 
+      std::cout << "   Total energy: " << total_energy
+                << " (kinetic: " << kinetic_energy
+                << ", potential: " << potential_energy << ")" << std::endl;
+
+      energy_file << time << "," << total_energy << ","
+                  << kinetic_energy << "," << potential_energy << "\n";
+
+      // Compute errors periodically (matching Newmark style)
       const int error_interval = 10; // Compute every N time steps
       if (exact_solution != nullptr && timestep_number % error_interval == 0)
       {
@@ -287,7 +343,8 @@ Wave::run(Function<dim> *exact_solution)
 
         error_file << time << "," << error_L2 << "," << error_H1 << "\n";
 
-        std::cout << "   L2 error = " << error_L2
+        std::cout << "   Time = " << time
+                  << ", L2 error = " << error_L2
                   << ", H1 error = " << error_H1 << std::endl;
       }
 
@@ -300,6 +357,11 @@ Wave::run(Function<dim> *exact_solution)
   {
     error_file.close();
   }
+  if (energy_file.is_open())
+  {
+    energy_file.close();
+  }
+
   std::cout << "-----------------------------------------------" << std::endl;
   std::cout << "Simulation complete." << std::endl;
 }

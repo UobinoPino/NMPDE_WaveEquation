@@ -1,5 +1,7 @@
 #include "WaveParallel.hpp"
 
+static constexpr unsigned int dim = WaveParallel::dim;
+
 int
 main(int argc, char *argv[])
 {
@@ -7,15 +9,54 @@ main(int argc, char *argv[])
 
     try
     {
+        // ============================================================
+        // SELECT TEST CASE: WaveParallel::EX1 or WaveParallel::EX2
+        // ============================================================
+        // EX1: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
+        //      f = (π²/2 - 1) * sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
+        //
+        // EX2: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(π/√2 * t)
+        //      f = 0 (homogeneous wave equation)
+        // ============================================================
+
+        const WaveParallel::TestCase test_case = WaveParallel::EX2;  // Change to WaveParallel::EX1 for first test case
+
+        // Create appropriate exact solution based on test case
+        std::unique_ptr<Function<dim>> exact_solution;
+
+        const unsigned int mpi_rank = Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
+
+        if (test_case == WaveParallel::EX1)
+        {
+            exact_solution = std::make_unique<WaveParallel::ExactSolutionEX1>();
+            if (mpi_rank == 0)
+            {
+                std::cout << "Running EX1: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)" << std::endl;
+                std::cout << "             f = (π²/2 - 1) * φ(x,y) * cos(t)" << std::endl;
+            }
+        }
+        else
+        {
+            exact_solution = std::make_unique<WaveParallel::ExactSolutionEX2>();
+            if (mpi_rank == 0)
+            {
+                std::cout << "Running EX2: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(π/√2 * t)" << std::endl;
+                std::cout << "             f = 0 (homogeneous)" << std::endl;
+            }
+        }
+        if (mpi_rank == 0)
+            std::cout << std::endl;
+
         WaveParallel wave_equation(/* degree = */ 1,
                                    /* T = */ 2.0,
                                    /* theta = */ 0.5,
-                                   /* delta_t = */ 1.0 / 64.0,
-                                   /* domain_left = */ -5.0,
-                                   /* domain_right = */ 5.0,
-                                   /* n_refine = */ 7);
+                                   /* delta_t = */ 0.01,
+                                   /* domain_left = */ -1.0,
+                                   /* domain_right = */ 1.0,
+                                   /* n_refine = */ 5,
+                                   /* test_case = */ test_case);
 
-        wave_equation.run();
+        wave_equation.run(exact_solution.get());
     }
     catch (std::exception &exc)
     {
@@ -25,7 +66,7 @@ main(int argc, char *argv[])
                   << std::endl;
         std::cerr << "Exception on processing: " << std::endl
                   << exc.what() << std::endl
-                  << "Aborting!" << std::endl
+                  << "Ehi, fix your code please!" << std::endl
                   << "----------------------------------------------------"
                   << std::endl;
         return 1;
@@ -37,7 +78,7 @@ main(int argc, char *argv[])
                   << "----------------------------------------------------"
                   << std::endl;
         std::cerr << "Unknown exception!" << std::endl
-                  << "Aborting!" << std::endl
+                  << "Ehi, fix your code please!" << std::endl
                   << "----------------------------------------------------"
                   << std::endl;
         return 1;
