@@ -6,7 +6,8 @@ WaveParallel::WaveParallel(const unsigned int degree_,
                            const double       delta_t_,
                            const double       domain_left_,
                            const double       domain_right_,
-                           const unsigned int n_refine_)
+                           const unsigned int n_refine_,
+                           const TestCase     test_case_)
   : degree(degree_)
   , T(T_)
   , theta(theta_)
@@ -14,6 +15,7 @@ WaveParallel::WaveParallel(const unsigned int degree_,
   , domain_left(domain_left_)
   , domain_right(domain_right_)
   , n_refine(n_refine_)
+  , test_case(test_case_)
   , time(delta_t_)
   , timestep_number(1)
   , mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
@@ -27,6 +29,7 @@ WaveParallel::setup_system()
 {
   pcout << "===============================================" << std::endl;
   pcout << "Setting up the parallel system" << std::endl;
+  pcout << "Test case: EX" << test_case << std::endl;
 
   // Create the mesh.
   {
@@ -175,8 +178,99 @@ WaveParallel::assemble_matrices()
 }
 
 void
+WaveParallel::assemble_forcing_terms()
+{
+  // Compute forcing terms: theta * f^n + (1-theta) * f^{n-1}
+  const unsigned int dofs_per_cell = fe->dofs_per_cell;
+  const unsigned int n_q           = quadrature->size();
+
+  FEValues<dim> fe_values(*fe,
+                          *quadrature,
+                          update_values | update_quadrature_points |
+                            update_JxW_values);
+
+  Vector<double> cell_rhs(dofs_per_cell);
+  std::vector<types::global_dof_index> dof_indices(dofs_per_cell);
+
+  // Create appropriate forcing function based on test case
+  std::unique_ptr<Function<dim>> rhs_function;
+  if (test_case == EX1)
+    rhs_function = std::make_unique<RightHandSideEX1>();
+  else
+    rhs_function = std::make_unique<RightHandSideEX2>();
+
+  // First compute theta * f^n
+  forcing_terms_owned = 0.0;
+  rhs_function->set_time(time);
+
+  for (const auto &cell : dof_handler.active_cell_iterators())
+    {
+      if (!cell->is_locally_owned())
+        continue;
+
+      fe_values.reinit(cell);
+      cell_rhs = 0.0;
+
+      for (unsigned int q = 0; q < n_q; ++q)
+        {
+          const double rhs_value = rhs_function->value(fe_values.quadrature_point(q));
+
+          for (unsigned int i = 0; i < dofs_per_cell; ++i)
+            {
+              cell_rhs(i) += fe_values.shape_value(i, q) * rhs_value *
+                             fe_values.JxW(q);
+            }
+        }
+
+      cell->get_dof_indices(dof_indices);
+
+      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+        {
+          if (locally_owned_dofs.is_element(dof_indices[i]))
+            forcing_terms_owned(dof_indices[i]) += theta * cell_rhs(i);
+        }
+    }
+
+  // Then add (1-theta) * f^{n-1}
+  rhs_function->set_time(time - delta_t);
+
+  for (const auto &cell : dof_handler.active_cell_iterators())
+    {
+      if (!cell->is_locally_owned())
+        continue;
+
+      fe_values.reinit(cell);
+      cell_rhs = 0.0;
+
+      for (unsigned int q = 0; q < n_q; ++q)
+        {
+          const double rhs_value = rhs_function->value(fe_values.quadrature_point(q));
+
+          for (unsigned int i = 0; i < dofs_per_cell; ++i)
+            {
+              cell_rhs(i) += fe_values.shape_value(i, q) * rhs_value *
+                             fe_values.JxW(q);
+            }
+        }
+
+      cell->get_dof_indices(dof_indices);
+
+      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+        {
+          if (locally_owned_dofs.is_element(dof_indices[i]))
+            forcing_terms_owned(dof_indices[i]) += (1.0 - theta) * cell_rhs(i);
+        }
+    }
+
+  forcing_terms_owned.compress(VectorOperation::add);
+}
+
+void
 WaveParallel::assemble_system_u()
 {
+  // Assemble forcing terms first.
+  assemble_forcing_terms();
+
   // Assemble RHS for u equation:
   // M * u^{n-1} + dt * M * v^{n-1} - theta*(1-theta)*dt^2 * A * u^{n-1}
   // + theta*dt * forcing_terms
@@ -195,12 +289,7 @@ WaveParallel::assemble_system_u()
   laplace_matrix.vmult(tmp_owned, old_solution_u_owned);
   system_rhs.add(-theta * (1.0 - theta) * delta_t * delta_t, tmp_owned);
 
-  // Compute forcing terms.
-  forcing_terms_owned = 0.0;
-
-  // For now, forcing is zero (RightHandSide returns 0).
-
-  // Add forcing terms to RHS.
+  // + theta*dt * forcing_terms
   system_rhs.add(theta * delta_t, forcing_terms_owned);
 
   // Build system matrix: M + theta^2 * dt^2 * A
@@ -208,7 +297,6 @@ WaveParallel::assemble_system_u()
   system_matrix.add(theta * theta * delta_t * delta_t, laplace_matrix);
 
   // Apply boundary conditions manually for Trilinos.
-  // Get boundary values.
   BoundaryValuesU boundary_values_u_function;
   boundary_values_u_function.set_time(time);
 
@@ -218,22 +306,17 @@ WaveParallel::assemble_system_u()
                                            boundary_values_u_function,
                                            boundary_values);
 
-  // Apply boundary values: for each constrained DoF, set the matrix row
-  // to have only 1 on the diagonal and set RHS to the boundary value.
+  // Apply boundary values.
   for (const auto &[dof_index, bc_value] : boundary_values)
     {
       if (locally_owned_dofs.is_element(dof_index))
         {
-          // Set RHS to boundary value
           system_rhs(dof_index) = bc_value;
 
-          // Clear the matrix row and set diagonal to 1
-          // We need to get all column indices for this row
           const auto row_length = system_matrix.row_length(dof_index);
           std::vector<types::global_dof_index> column_indices(row_length);
           std::vector<double> column_values(row_length);
 
-          // Get all entries in this row
           unsigned int n_entries = 0;
           for (auto it = system_matrix.begin(dof_index);
                it != system_matrix.end(dof_index);
@@ -243,7 +326,6 @@ WaveParallel::assemble_system_u()
               column_values[n_entries]  = (it->column() == dof_index) ? 1.0 : 0.0;
             }
 
-          // Set the row values
           system_matrix.set(dof_index,
                             n_entries,
                             column_indices.data(),
@@ -292,16 +374,12 @@ WaveParallel::assemble_system_v()
                                            boundary_values_v_function,
                                            boundary_values);
 
-  // Apply boundary values: for each constrained DoF, set the matrix row
-  // to have only 1 on the diagonal and set RHS to the boundary value.
   for (const auto &[dof_index, bc_value] : boundary_values)
     {
       if (locally_owned_dofs.is_element(dof_index))
         {
-          // Set RHS to boundary value
           system_rhs(dof_index) = bc_value;
 
-          // Clear the matrix row and set diagonal to 1
           const auto row_length = system_matrix.row_length(dof_index);
           std::vector<types::global_dof_index> column_indices(row_length);
           std::vector<double> column_values(row_length);
@@ -392,13 +470,89 @@ WaveParallel::output_results() const
                                       MPI_COMM_WORLD);
 }
 
+double
+WaveParallel::compute_error(const VectorTools::NormType &norm_type,
+                            Function<dim>               &exact_solution) const
+{
+  // Assertions for safety (matching Newmark style)
+  Assert(fe.get() != nullptr, ExcMessage("FE not initialized"));
+  Assert(dof_handler.n_dofs() == solution_u.size(),
+         ExcMessage("solution size != n_dofs"));
+  Assert(triangulation.n_global_active_cells() > 0,
+         ExcMessage("mesh has no active cells"));
+
+  // Use Gauss quadrature for hypercube meshes
+  const QGauss<dim> quadrature_error(fe->degree + 2);
+
+  // Use MappingQ for hypercube meshes (matching Newmark style)
+  MappingQ<dim> mapping(1);
+
+  // Set the time for the exact solution
+  exact_solution.set_time(time);
+
+  Vector<double> error_per_cell(triangulation.n_active_cells());
+
+  VectorTools::integrate_difference(mapping,
+                                    dof_handler,
+                                    solution_u,
+                                    exact_solution,
+                                    error_per_cell,
+                                    quadrature_error,
+                                    norm_type);
+
+  const double error = VectorTools::compute_global_error(triangulation,
+                                                         error_per_cell,
+                                                         norm_type);
+  return error;
+}
+
+double
+WaveParallel::compute_total_energy() const
+{
+  // Compute total energy: E = 0.5 * (v^T M v + u^T A u)
+  // This is the same formula used in the Newmark implementation
+
+  TrilinosWrappers::MPI::Vector Mv(solution_v_owned);
+  TrilinosWrappers::MPI::Vector Au(solution_u_owned);
+
+  // Compute M * v
+  mass_matrix.vmult(Mv, solution_v_owned);
+
+  // Compute A * u
+  laplace_matrix.vmult(Au, solution_u_owned);
+
+  // Compute kinetic energy: 0.5 * v^T * M * v
+  const double kinetic_energy = 0.5 * (solution_v_owned * Mv);
+
+  // Compute potential energy: 0.5 * u^T * A * u
+  const double potential_energy = 0.5 * (solution_u_owned * Au);
+
+  return kinetic_energy + potential_energy;
+}
+
 void
-WaveParallel::run()
+WaveParallel::run(Function<dim> *exact_solution)
 {
   setup_system();
 
   // Assemble mass and laplace matrices (done once).
   assemble_matrices();
+
+  // Open a file to save error history (only on rank 0).
+  std::ofstream error_file;
+  if (exact_solution != nullptr && mpi_rank == 0)
+    {
+      error_file.open("errors_parallel.csv");
+      error_file << "time,L2_error,H1_error\n";
+    }
+
+  // Open a file to save energy history (only on rank 0).
+  std::ofstream energy_file;
+  if (mpi_rank == 0)
+    {
+      energy_file.open("energy_parallel.csv");
+      energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
+    }
 
   // Project initial conditions.
   pcout << "Projecting initial conditions" << std::endl;
@@ -433,18 +587,57 @@ WaveParallel::run()
       // Output results.
       output_results();
 
-      // Compute and output energy (approximate).
-      // Note: This is a simplified energy computation for parallel.
-      const double kinetic_energy  = solution_v_owned * solution_v_owned;
-      const double potential_energy = solution_u_owned * solution_u_owned;
-      // pcout << "   Approximate energy: " << 0.5 * (kinetic_energy + potential_energy)
-      //       << std::endl;
+      // Compute and output energy using the Newmark formula:
+      // E = 0.5 * (v^T M v + u^T A u)
+      TrilinosWrappers::MPI::Vector Mv(solution_v_owned);
+      TrilinosWrappers::MPI::Vector Au(solution_u_owned);
+      mass_matrix.vmult(Mv, solution_v_owned);
+      laplace_matrix.vmult(Au, solution_u_owned);
+      const double kinetic_energy = 0.5 * (solution_v_owned * Mv);
+      const double potential_energy = 0.5 * (solution_u_owned * Au);
+      const double total_energy = kinetic_energy + potential_energy;
+
+      pcout << "   Total energy: " << total_energy
+            << " (kinetic: " << kinetic_energy
+            << ", potential: " << potential_energy << ")" << std::endl;
+
+      if (mpi_rank == 0)
+        {
+          energy_file << time << "," << total_energy << ","
+                      << kinetic_energy << "," << potential_energy << "\n";
+        }
+
+      // Compute and output errors if exact solution is provided (matching Newmark style).
+      const int error_interval = 10; // Compute every N time steps
+      if (exact_solution != nullptr && timestep_number % error_interval == 0)
+        {
+          const double error_L2 = compute_error(VectorTools::L2_norm, *exact_solution);
+          const double error_H1 = compute_error(VectorTools::H1_norm, *exact_solution);
+
+          if (mpi_rank == 0)
+            {
+              error_file << time << "," << error_L2 << "," << error_H1 << "\n";
+            }
+
+          pcout << "   Time = " << time
+                << ", L2 error = " << error_L2
+                << ", H1 error = " << error_H1 << std::endl;
+        }
 
       // Update old solutions.
       old_solution_u_owned = solution_u_owned;
       old_solution_v_owned = solution_v_owned;
       old_solution_u       = solution_u;
       old_solution_v       = solution_v;
+    }
+
+  if (error_file.is_open())
+    {
+      error_file.close();
+    }
+  if (energy_file.is_open())
+    {
+      energy_file.close();
     }
 
   pcout << "-----------------------------------------------" << std::endl;
