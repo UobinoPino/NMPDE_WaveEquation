@@ -44,6 +44,9 @@ public:
   // Physical dimension (1D, 2D, 3D)
   static constexpr unsigned int dim = 2;
 
+  // Test case selector: 1 for EX1, 2 for EX2
+  enum TestCase { EX1 = 1, EX2 = 2 };
+
   // Initial condition.
   class FunctionU0 : public Function<dim>
   {
@@ -85,31 +88,38 @@ public:
     }
   };
 
-      // Initial condition.
-  class FunctionU2 : public Function<dim>
+  // Initial acceleration for EX1: a0 = -sin(π(x+1)/2) * sin(π(y+1)/2)
+  class FunctionU2_EX1 : public Function<dim>
   {
   public:
-    // Constructor.
-    FunctionU2() = default;
+    FunctionU2_EX1() = default;
 
-    // Evaluation of the function.
-    virtual double
-    value([[maybe_unused]] const Point<dim> &p,
+    virtual double value([[maybe_unused]] const Point<dim> &p,
           const unsigned int /*component*/ = 0) const override
     {
-      // // EX1: u2​= - (sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ))
-      // return - (std::sin(numbers::PI * (p[0] + 1) / 2) *
-      //           std::sin(numbers::PI * (p[1] + 1) / 2));
-
-      // EX2: u2 = - pi*pi * 0.5 * sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 )
-      return - (numbers::PI * numbers::PI * 0.5) *
-             (std::sin(numbers::PI * (p[0] + 1) / 2) *
-              std::sin(numbers::PI * (p[1] + 1) / 2));
-      // return (1/(0.25 * 0.01 * 0.01)) * // beta=0.25, delta_t=0.01
-      //        std::sin(numbers::PI * p[0]) *
-      //        std::sin(numbers::PI * p[1]);
+      // EX1: u_tt(0) = -cos(0) * φ(x,y) = -φ(x,y)
+      return -(std::sin(numbers::PI * (p[0] + 1) / 2) *
+               std::sin(numbers::PI * (p[1] + 1) / 2));
     }
   };
+
+  // Initial acceleration for EX2: a0 = -π²/2 * sin(π(x+1)/2) * sin(π(y+1)/2)
+  class FunctionU2_EX2 : public Function<dim>
+  {
+  public:
+    FunctionU2_EX2() = default;
+
+    virtual double value([[maybe_unused]] const Point<dim> &p,
+          const unsigned int /*component*/ = 0) const override
+    {
+      // EX2: u_tt(0) = -(π/√2)² * φ(x,y) = -π²/2 * φ(x,y)
+      return -(numbers::PI * numbers::PI * 0.5) *
+             (std::sin(numbers::PI * (p[0] + 1) / 2) *
+              std::sin(numbers::PI * (p[1] + 1) / 2));
+    }
+  };
+
+
 
   // Dirichlet boundary function.
   //
@@ -132,25 +142,112 @@ public:
     }
   };
 
-  // // Forcing term. f=(2π2-1) cos(t) sin(πx)sin(πy) 
-  // class FunctionF : public Function<dim>
-  // {
-  // public:
-  //   // Constructor.
-  //   FunctionF()
-  //   {}
+  // Forcing term for EX1: f = (π²/2 - 1) * sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
+  class RightHandSideEX1 : public Function<dim>
+  {
+  public:
+    RightHandSideEX1() = default;
 
-  //   // Evaluation.
-  //   virtual double
-  //   value(const Point<dim> &p,
-  //         const unsigned int /*component*/ = 0) const override
-  //   {
-  //     return (2 * numbers::PI * numbers::PI - 1) *
-  //            std::cos(numbers::PI * this->get_time()) *
-  //            std::sin(numbers::PI * p[0]) *
-  //            std::sin(numbers::PI * p[1]);
-  //   }
-  // };
+    virtual double
+    value(const Point<dim> &p,
+          const unsigned int /*component*/ = 0) const override
+    {
+      return (numbers::PI * numbers::PI / 2.0 - 1.0) *
+             std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
+             std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
+             std::cos(this->get_time());
+    }
+  };
+
+  // Forcing term for EX2: f = 0 (homogeneous wave equation)
+  class RightHandSideEX2 : public Function<dim>
+  {
+  public:
+    RightHandSideEX2() = default;
+
+    virtual double
+    value(const Point<dim> & /*p*/,
+          const unsigned int /*component*/ = 0) const override
+    {
+      return 0.0;
+    }
+  };
+
+  // Exact solution for EX1: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
+class ExactSolutionEX1 : public Function<dim>
+{
+public:
+  ExactSolutionEX1() = default;
+
+  virtual double
+  value(const Point<dim> &p,
+        const unsigned int /*component*/ = 0) const override
+  {
+    return std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
+           std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
+           std::cos(this->get_time());
+  }
+
+  virtual Tensor<1, dim>
+  gradient(const Point<dim> &p,
+           const unsigned int /*component*/ = 0) const override
+  {
+    Tensor<1, dim> result;
+    const double time_factor = std::cos(this->get_time());
+
+    result[0] = numbers::PI * 0.5 *
+                std::cos(numbers::PI * (p[0] + 1.0) / 2.0) *
+                std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
+                time_factor;
+
+    result[1] = numbers::PI * 0.5 *
+                std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
+                std::cos(numbers::PI * (p[1] + 1.0) / 2.0) *
+                time_factor;
+
+    return result;
+  }
+};
+
+// Exact solution for EX2: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(π/√2 * t)
+class ExactSolutionEX2 : public Function<dim>
+{
+public:
+  ExactSolutionEX2() = default;
+
+  virtual double
+  value(const Point<dim> &p,
+        const unsigned int /*component*/ = 0) const override
+  {
+    const double omega = numbers::PI / std::sqrt(2.0);
+    return std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
+           std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
+           std::cos(omega * this->get_time());
+  }
+
+  virtual Tensor<1, dim>
+  gradient(const Point<dim> &p,
+           const unsigned int /*component*/ = 0) const override
+  {
+    Tensor<1, dim> result;
+    const double omega = numbers::PI / std::sqrt(2.0);
+    const double time_factor = std::cos(omega * this->get_time());
+
+    result[0] = numbers::PI * 0.5 *
+                std::cos(numbers::PI * (p[0] + 1.0) / 2.0) *
+                std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
+                time_factor;
+
+    result[1] = numbers::PI * 0.5 *
+                std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
+                std::cos(numbers::PI * (p[1] + 1.0) / 2.0) *
+                time_factor;
+
+    return result;
+  }
+};
+
+
 
   Wave(const double                                   &domain_left_,
       const double                                    &domain_right_,
@@ -160,7 +257,7 @@ public:
       const double                                    &beta_,
       const double                                    &gamma_,
       const double                                    &delta_t_,
-      const std::function<double(const Point<dim> &, const double &)> &f_)
+      const TestCase                                  test_case_ = EX1)
     : domain_left(domain_left_)
     , domain_right(domain_right_)
     , n_refine(n_refine_)
@@ -169,7 +266,7 @@ public:
     , beta(beta_)
     , gamma(gamma_)
     , delta_t(delta_t_)
-    , f(f_)
+    , test_case(test_case_)
     , mpi_size(Utilities:: MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , mesh(MPI_COMM_WORLD)
@@ -177,30 +274,24 @@ public:
   {}
 
   // Run the time-dependent simulation.
-  void
-  run(Function<dim> *exact_solution = nullptr);
+  void run(Function<dim> *exact_solution = nullptr);
 
   // Compute the error against a given exact solution.
-  double
-  compute_error(const VectorTools::NormType &norm_type,
+  double compute_error(const VectorTools::NormType &norm_type,
                 Function<dim>         &exact_solution) const;
 
 protected:
   // Initialization.
-  void
-  setup();
+  void setup();
 
   // System assembly.
-  void
-  assemble();
+  void assemble();
 
   // System solution.
-  void
-  solve_linear_system();
+  void solve_linear_system();
 
   // Output.
-  void
-  output() const;
+  void output() const;
 
   // Compute total energy:  E = 0.5 * (v^T M v + u^T A u)
   double compute_total_energy() const;
@@ -234,8 +325,7 @@ protected:
   // Current timestep number.
   unsigned int timestep_number = 0;
 
-  // Forcing term. NON LO VOGLIO - forse si, cosa cambia tra lui e FunctionU0
-  std::function<double(const Point<dim> &, const double &)> f;
+  const TestCase test_case;
 
   // Number of MPI processes.
   const unsigned int mpi_size;

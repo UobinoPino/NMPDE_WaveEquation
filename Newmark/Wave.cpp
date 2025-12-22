@@ -141,6 +141,15 @@ Wave::assemble()
   std::vector<double> v_old_values(n_q);
   std::vector<double> a_old_values(n_q);
 
+  // Create appropriate forcing function based on test case
+  std::unique_ptr<Function<dim>> rhs_function;
+  if (test_case == EX1)
+    rhs_function = std::make_unique<RightHandSideEX1>();
+  else
+    rhs_function = std::make_unique<RightHandSideEX2>();
+
+  rhs_function->set_time(time);
+
   for (const auto &cell : dof_handler.active_cell_iterators())
     {
       if (!cell->is_locally_owned())
@@ -150,6 +159,8 @@ Wave::assemble()
 
       cell_matrix = 0.0;
       cell_rhs    = 0.0;
+      cell_mass_matrix     = 0.0;
+      cell_stiffness_matrix = 0.0;
 
       // Coefficienti Newmark
       const double c1 = 1.0 / (beta * delta_t * delta_t);
@@ -167,10 +178,7 @@ Wave::assemble()
       for (unsigned int q = 0; q < n_q; ++q)
         {
 
-          const double f_new_loc = f(fe_values.quadrature_point(q), time); // f^{n+1}
-          // const double f_new_loc = f.value(fe_values.quadrature_point(q)); // per usare FunctionF
-
-
+          const double f_new_loc = rhs_function->value(fe_values.quadrature_point(q));
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
@@ -331,8 +339,11 @@ Wave::run(Function<dim> *exact_solution){
     VectorTools::interpolate(dof_handler, FunctionU1(), velocity_owned);
     velocity = velocity_owned;
 
-    // Also initialize the acceleration with the initial condition u_2. //
-    VectorTools::interpolate(dof_handler, FunctionU2(), acceleration_owned);
+    // Initialize acceleration based on test case
+    if (test_case == EX1)
+      VectorTools::interpolate(dof_handler, FunctionU2_EX1(), acceleration_owned);
+    else
+      VectorTools::interpolate(dof_handler, FunctionU2_EX2(), acceleration_owned);
     acceleration = acceleration_owned;
 
     // Vector to store energy over time
