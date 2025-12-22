@@ -99,6 +99,86 @@ Wave::setup()
 
 }
 
+// DISPERSION
+void
+Wave::find_center_point_dof()
+{
+  // Target point:   center of domain (0, 0)
+  const Point<dim> center_point(0.0, 0.0);
+  
+  center_point_is_local = false;
+  center_dof_index = numbers::invalid_dof_index;
+  
+  // Iterate over all locally owned cells to find the one containing the center point
+  for (const auto &cell : dof_handler.active_cell_iterators())
+  {
+    if (! cell->is_locally_owned())
+      continue;
+    
+    // Check if this cell contains the center point using a simple bounding box check
+    const Point<dim> cell_center = cell->center();
+    const double cell_diameter = cell->diameter();
+    
+    // If the center point is close enough to this cell's center, check further
+    if (center_point.distance(cell_center) < cell_diameter)
+    {
+      // Get DoF indices for this cell
+      std::vector<types::global_dof_index> local_dof_indices(fe->dofs_per_cell);
+      cell->get_dof_indices(local_dof_indices);
+      
+      // Find the DoF closest to the center point
+      double min_distance = std::numeric_limits<double>::max();
+      
+      for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell; ++v)
+      {
+        const Point<dim> vertex = cell->vertex(v);
+        const double distance = center_point.distance(vertex);
+        
+        if (distance < min_distance)
+        {
+          min_distance = distance;
+          center_dof_index = local_dof_indices[v];
+        }
+      }
+      
+      // If we found a DoF very close to (0,0), we're done
+      if (min_distance < 1e-10)
+      {
+        center_point_is_local = true;
+        pcout << "Center point DoF found:  index = " << center_dof_index 
+              << ", distance from (0,0) = " << min_distance << std::endl;
+        break;
+      }
+    }
+  }
+  
+  // Open file for recording (only on process that owns the center point)
+  if (center_point_is_local)
+  {
+    center_point_file. open("center_point_solution.csv");
+    center_point_file << "time,solution,velocity,acceleration\n";
+    center_point_file << std::setprecision(12);
+  }
+}
+
+
+void
+Wave::record_center_point_value()
+{
+  if (!center_point_is_local)
+    return;
+    
+  // Get the solution value at the center DoF
+  const double u_center = solution[center_dof_index];
+  const double v_center = velocity[center_dof_index];
+  const double a_center = acceleration[center_dof_index];
+  
+  center_point_file << time << "," 
+                    << u_center << "," 
+                    << v_center << ","
+                    << a_center << "\n";
+}
+
 void
 Wave::assemble()
 {
@@ -205,7 +285,7 @@ Wave::assemble()
                   cell_stiffness_matrix(i, j) += 
                       scalar_product(fe_values.shape_grad(i, q),
                                      fe_values.shape_grad(j, q)) *
-                      fe_values. JxW(q);
+                      fe_values.JxW(q);
                 }
 
               // Time derivative.
@@ -331,6 +411,9 @@ Wave::run(Function<dim> *exact_solution){
   {
     setup();
 
+    // Find the DoF corresponding to the center point - DISPERSION
+    find_center_point_dof();
+
     // Initialize the solution with the initial condition u_0.
     VectorTools::interpolate(dof_handler, FunctionU0(), solution_owned);
     solution = solution_owned;
@@ -354,6 +437,9 @@ Wave::run(Function<dim> *exact_solution){
 
     // Output initial condition.
     output();
+
+    // Record initial center point value - DISPERSION
+    record_center_point_value();
   }
 
   pcout << "===============================================" << std::endl;
@@ -419,6 +505,9 @@ Wave::run(Function<dim> *exact_solution){
       // solution vector.
       solution = solution_owned;
 
+      // Record center point value - DISPERSION
+      record_center_point_value();
+
       // Compute and save energy
       // Note: We need the matrices to be assembled without BC modifications
       // for accurate energy computation.
@@ -442,6 +531,12 @@ Wave::run(Function<dim> *exact_solution){
     if (energy_file.is_open())
     {
       energy_file.close();
+    }
+        // Close center point file
+    if (center_point_file.is_open())
+    {
+      center_point_file.close();
+      pcout << "Center point time series saved to:  center_point_solution.csv" << std::endl;
     }
 }
 
