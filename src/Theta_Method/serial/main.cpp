@@ -42,7 +42,7 @@ main()
                            /* delta_t = */ 0.01,
                            /* domain_left = */ -1.0,
                            /* domain_right = */ 1.0,
-                           /* n_refine = */ 5,
+                           /* n_refine = */ 7,
                            /* test_case = */ test_case);
 
         auto start = std::chrono::high_resolution_clock::now();
@@ -51,6 +51,9 @@ main()
 
         std::chrono::duration<double> elapsed = end - start;
         std::cout << "Total execution time: " << elapsed.count() << " seconds" << std::endl;
+
+        // Output for scalability script parsing (format: SCALABILITY_RESULT,type,procs,time)
+        std::cout << "SCALABILITY_RESULT,serial,1," << elapsed.count() << std::endl;
     }
     catch (std::exception &exc)
     {

@@ -1,4 +1,5 @@
 #include "WaveParallel.hpp"
+#include <chrono>
 
 static constexpr unsigned int dim = WaveParallel::dim;
 
@@ -25,6 +26,8 @@ main(int argc, char *argv[])
         std::unique_ptr<Function<dim>> exact_solution;
 
         const unsigned int mpi_rank = Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
+        const unsigned int mpi_size = Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD);
+
 
         if (test_case == WaveParallel::EX1)
         {
@@ -53,10 +56,27 @@ main(int argc, char *argv[])
                                    /* delta_t = */ 0.01,
                                    /* domain_left = */ -1.0,
                                    /* domain_right = */ 1.0,
-                                   /* n_refine = */ 5,
+                                   /* n_refine = */ 7,
                                    /* test_case = */ test_case);
 
+        // Synchronize before timing
+        MPI_Barrier(MPI_COMM_WORLD);
+        auto start = std::chrono::high_resolution_clock::now();
+
         wave_equation.run(exact_solution.get());
+
+        // Synchronize after computation
+        MPI_Barrier(MPI_COMM_WORLD);
+        auto end = std::chrono::high_resolution_clock::now();
+
+        std::chrono::duration<double> elapsed = end - start;
+
+        if (mpi_rank == 0)
+        {
+            std::cout << "Total execution time: " << elapsed.count() << " seconds" << std::endl;
+            // Output for scalability script parsing (format: SCALABILITY_RESULT,type,procs,time)
+            std::cout << "SCALABILITY_RESULT,parallel," << mpi_size << "," << elapsed.count() << std::endl;
+        }
     }
     catch (std::exception &exc)
     {
