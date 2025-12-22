@@ -368,6 +368,11 @@ Wave::run(Function<dim> *exact_solution){
             << ", time = " << std::setw(4) << std::fixed << std::setprecision(2)
             << time << " : ";
 
+      // Save old OWNED values BEFORE assemble (needed for Newmark update)
+      TrilinosWrappers::MPI::Vector u_old(solution_owned);
+      TrilinosWrappers::MPI::Vector v_old(velocity_owned);
+      TrilinosWrappers::MPI::Vector a_old(acceleration_owned);
+
       //f.set_time(time); // aggiorna il tempo della forcing term se usi FunctionF
 
 
@@ -397,13 +402,13 @@ Wave::run(Function<dim> *exact_solution){
       // a^{n+1} = c1*(u^{n+1}-u^n) - c2*v^n - c3*a^n
       acceleration_owned = 0.0;
       acceleration_owned.add( N1, solution_owned); // + N1*u^{n+1}
-      acceleration_owned.add(-N1, solution);       // - N1*u^n
-      acceleration_owned.add(-N2, velocity);       // - N2*v^n
-      acceleration_owned.add(-N3, acceleration);   // - N3*a^n
+      acceleration_owned.add(-N1, u_old);       // - N1*u^n
+      acceleration_owned.add(-N2, v_old);       // - N2*v^n
+      acceleration_owned.add(-N3, a_old);   // - N3*a^n
 
       // v^{n+1} = v^n + dt*((1-gamma)*a^n + gamma*a^{n+1})
-      velocity_owned = velocity;
-      velocity_owned.add(delta_t*(1.0 - gamma), acceleration);      // + dt*(1-gamma)*a^n
+      velocity_owned = v_old;
+      velocity_owned.add(delta_t*(1.0 - gamma), a_old);      // + dt*(1-gamma)*a^n
       velocity_owned.add(delta_t*gamma, acceleration_owned);        // + dt*gamma*a^{n+1}
 
       // Aggiorna ghost values paralleli
