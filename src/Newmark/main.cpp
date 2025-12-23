@@ -45,10 +45,10 @@ int main(int argc, char *argv[]) {
 
       Wave problem(/* domain_left = */ -1.0,
                    /* domain_right = */ 1.0,
-                   /* n_refine = */ 7,
+                   /* n_refine = */ 1,
                    /* degree = */ 1,
                    /* T = */ 2.0,
-                   /* beta = */ 0.25,
+                   /* beta = */ 0.25, //0.25
                    /* gamma = */ 0.5,
                    /* delta_t = */ 0.01,
                    /* test_case = */ test_case);

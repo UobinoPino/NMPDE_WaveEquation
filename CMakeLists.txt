@@ -4,8 +4,8 @@ project(Wave LANGUAGES CXX C)
 include(common/cmake-common.cmake)
 
 add_executable(Wave_Newmark
-        src/Newmark/Wave_Newmark.cpp
-        src/Newmark/Wave.cpp)
+        src/Newmark/Wave.cpp
+        src/Newmark/main.cpp)
 deal_ii_setup_target(Wave_Newmark)
 
 add_executable(Wave_Serial

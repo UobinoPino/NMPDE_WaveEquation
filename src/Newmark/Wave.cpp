@@ -308,15 +308,12 @@ Wave::assemble()
 void
 Wave::solve_linear_system()
 {
-  TrilinosWrappers::PreconditionSSOR preconditioner;
-  preconditioner.initialize(
-    system_matrix, TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
 
   ReductionControl solver_control(10000, 1.0e-16, 1.0e-6);
 
   SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
-  solver.solve(system_matrix, solution_owned, system_rhs, preconditioner);
+  solver.solve(system_matrix, solution_owned, system_rhs, PreconditionIdentity());
   pcout << solver_control.last_step() << " CG iterations" << std::endl;
 }
 

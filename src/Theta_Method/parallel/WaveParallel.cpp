@@ -485,7 +485,7 @@ WaveParallel::solve_u()
 
   SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
-  solver.solve(system_matrix, solution_u_owned, system_rhs, preconditioner);
+  solver.solve(system_matrix, solution_u_owned, system_rhs, PreconditionIdentity());
 
   pcout << "   u-equation: " << solver_control.last_step()
         << " CG iterations." << std::endl;
@@ -497,9 +497,7 @@ WaveParallel::solve_u()
 void
 WaveParallel::solve_v()
 {
-  TrilinosWrappers::PreconditionSSOR preconditioner;
-  preconditioner.initialize(
-    system_matrix, TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
+
 
   ReductionControl solver_control(/* maxiter = */ 1000,
                                   /* tolerance = */ 1.0e-12,
@@ -507,7 +505,7 @@ WaveParallel::solve_v()
 
   SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
-  solver.solve(system_matrix, solution_v_owned, system_rhs, preconditioner);
+  solver.solve(system_matrix, solution_v_owned, system_rhs, PreconditionIdentity());
 
   pcout << "   v-equation: " << solver_control.last_step()
         << " CG iterations." << std::endl;

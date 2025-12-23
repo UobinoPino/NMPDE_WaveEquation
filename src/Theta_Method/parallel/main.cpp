@@ -52,11 +52,11 @@ main(int argc, char *argv[])
 
         WaveParallel wave_equation(/* degree = */ 1,
                                    /* T = */ 2.0,
-                                   /* theta = */ 0.5,
+                                   /* theta = */ 0.5, //0.5
                                    /* delta_t = */ 0.01,
                                    /* domain_left = */ -1.0,
                                    /* domain_right = */ 1.0,
-                                   /* n_refine = */ 7,
+                                   /* n_refine = */ 5,
                                    /* test_case = */ test_case);
 
         // Synchronize before timing
