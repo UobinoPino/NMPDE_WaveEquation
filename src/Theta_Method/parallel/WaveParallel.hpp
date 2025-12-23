@@ -355,6 +355,24 @@ protected:
   TrilinosWrappers::MPI::Vector tmp_owned;
   TrilinosWrappers::MPI::Vector forcing_terms_owned;
 
+  // ----- Dispersion analysis:  center point tracking -----
+
+  // File stream for center point time series
+  std:: ofstream center_point_file;
+
+  // DoF index corresponding to the center point (0,0)
+  types::global_dof_index center_dof_index;
+
+  // Flag indicating if center point is owned by this MPI process
+  bool center_point_is_local;
+
+  // Find the DoF closest to a given point
+  void find_center_point_dof();
+
+  // Record solution value at center point
+  void record_center_point_value();
+
+
   // Output stream for process 0.
   ConditionalOStream pcout;
 };

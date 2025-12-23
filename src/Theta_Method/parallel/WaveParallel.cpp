@@ -116,6 +116,74 @@ WaveParallel::setup_system()
   pcout << "===============================================" << std::endl;
 }
 
+// DISPERSION ANALYSIS
+void
+WaveParallel::find_center_point_dof()
+{
+  const Point<dim> center_point(0.0, 0.0);
+
+  center_point_is_local = false;
+  center_dof_index = numbers::invalid_dof_index;
+
+  for (const auto &cell : dof_handler.active_cell_iterators())
+  {
+    if (!cell->is_locally_owned())
+      continue;
+
+    const Point<dim> cell_center = cell->center();
+    const double cell_diameter = cell->diameter();
+
+    if (center_point.distance(cell_center) < cell_diameter)
+    {
+      std::vector<types::global_dof_index> local_dof_indices(fe->dofs_per_cell);
+      cell->get_dof_indices(local_dof_indices);
+
+      double min_distance = std::numeric_limits<double>::max();
+
+      for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell; ++v)
+      {
+        const Point<dim> vertex = cell->vertex(v);
+        const double distance = center_point.distance(vertex);
+
+        if (distance < min_distance)
+        {
+          min_distance = distance;
+          center_dof_index = local_dof_indices[v];
+        }
+      }
+
+      if (min_distance < 1e-10)
+      {
+        center_point_is_local = true;
+        pcout << "Center point DoF found: index = " << center_dof_index
+              << ", distance from (0,0) = " << min_distance << std::endl;
+        break;
+      }
+    }
+  }
+
+  if (center_point_is_local)
+  {
+    center_point_file.open("center_point_solution_theta.csv");
+    center_point_file << "time,solution,velocity\n";
+    center_point_file << std::setprecision(12);
+  }
+}
+
+void
+WaveParallel::record_center_point_value()
+{
+  if (!center_point_is_local)
+    return;
+
+  const double u_center = solution_u[center_dof_index];
+  const double v_center = solution_v[center_dof_index];
+
+  center_point_file << time << ","
+                    << u_center << ","
+                    << v_center << "\n";
+}
+
 void
 WaveParallel::assemble_matrices()
 {
@@ -538,6 +606,9 @@ WaveParallel::run(Function<dim> *exact_solution)
   // Assemble mass and laplace matrices (done once).
   assemble_matrices();
 
+  // Find center point DoF for dispersion analysis
+  find_center_point_dof();
+
   // Open a file to save error history (only on rank 0).
   std::ofstream error_file;
   if (exact_solution != nullptr && mpi_rank == 0)
@@ -550,7 +621,7 @@ WaveParallel::run(Function<dim> *exact_solution)
   std::ofstream energy_file;
   if (mpi_rank == 0)
     {
-      energy_file.open("energy_parallel.csv");
+      energy_file.open("energy_parallel_2.csv");
       energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
     }
 
@@ -566,6 +637,15 @@ WaveParallel::run(Function<dim> *exact_solution)
                            InitialValuesV(),
                            old_solution_v_owned);
   old_solution_v = old_solution_v_owned;
+
+  // Record initial condition at center point (t=0)
+  // We need to temporarily set solution_u/v to old values to record t=0
+  solution_u = old_solution_u;
+  solution_v = old_solution_v;
+  double saved_time = time;
+  time = 0.0;
+  record_center_point_value();
+  time = saved_time;
 
   pcout << std::endl;
   pcout << "Starting time-stepping loop..." << std::endl;
@@ -586,6 +666,9 @@ WaveParallel::run(Function<dim> *exact_solution)
 
       // Output results.
       output_results();
+
+      // Record center point value for dispersion analysis
+      record_center_point_value();
 
       // Compute and output energy using the Newmark formula:
       // E = 0.5 * (v^T M v + u^T A u)
@@ -638,6 +721,11 @@ WaveParallel::run(Function<dim> *exact_solution)
   if (energy_file.is_open())
     {
       energy_file.close();
+    }
+  if (center_point_file.is_open())
+    {
+      center_point_file.close();
+      pcout << "Center point time series saved to: center_point_solution_theta.csv" << std::endl;
     }
 
   pcout << "-----------------------------------------------" << std::endl;
