@@ -514,6 +514,7 @@ WaveParallel::solve_v()
   solution_v = solution_v_owned;
 }
 
+
 void
 WaveParallel::output_results() const
 {
@@ -521,6 +522,48 @@ WaveParallel::output_results() const
 
   data_out.add_data_vector(dof_handler, solution_u, "U");
   data_out.add_data_vector(dof_handler, solution_v, "V");
+
+  // Compute and output the exact solution
+  TrilinosWrappers::MPI::Vector exact_owned;
+  exact_owned.reinit(locally_owned_dofs, MPI_COMM_WORLD);
+
+  TrilinosWrappers::MPI::Vector exact_solution_vec;
+  exact_solution_vec.reinit(locally_owned_dofs, locally_relevant_dofs, MPI_COMM_WORLD);
+
+  // Choose the appropriate exact solution based on test case
+  if (test_case == EX1)
+  {
+    ExactSolutionEX1 exact_func;
+    exact_func.set_time(time);
+    VectorTools::interpolate(dof_handler, exact_func, exact_owned);
+  }
+  else
+  {
+    ExactSolutionEX2 exact_func;
+    exact_func.set_time(time);
+    VectorTools::interpolate(dof_handler, exact_func, exact_owned);
+  }
+  exact_solution_vec = exact_owned;
+
+  data_out.add_data_vector(dof_handler, exact_solution_vec, "U_exact");
+
+  // Compute and output the pointwise error: U - U_exact
+  TrilinosWrappers::MPI::Vector error_owned;
+  error_owned.reinit(locally_owned_dofs, MPI_COMM_WORLD);
+  error_owned = solution_u_owned;
+  error_owned -= exact_owned;
+
+  // Take absolute value of each entry
+  for (const auto &idx : locally_owned_dofs)
+  {
+    error_owned[idx] = std::abs(error_owned[idx]);
+  }
+
+  TrilinosWrappers::MPI::Vector error_vec;
+  error_vec.reinit(locally_owned_dofs, locally_relevant_dofs, MPI_COMM_WORLD);
+  error_vec = error_owned;
+
+  data_out.add_data_vector(dof_handler, error_vec, "Error");
 
   // Add partitioning information.
   std::vector<unsigned int> partition_int(triangulation.n_active_cells());
