@@ -4,7 +4,7 @@ Group information:
 - member-1: Luca, Spreafico, 10660926
 - member-2: Marta, Arzeni, 107 98912
 - member-3: Matilde, Colombo, 107 82110
-- member 4: Roberto Manea, 
+- member 4: Roberto Manea, 10813429
 
 A finite element solver for the 2D wave equation using the [deal.II](https://www.dealii.org/) library. The project implements two time-stepping schemes (**Newmark-β** and **θ-method**) with both serial and MPI-parallel versions.
 
