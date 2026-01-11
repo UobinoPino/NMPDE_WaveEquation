@@ -1,5 +1,7 @@
-#ifndef WAVE_HPP
-#define WAVE_HPP
+#ifndef WAVE_NEWMARK_HPP
+#define WAVE_NEWMARK_HPP
+
+#include "../common/WaveTestCases.hpp"
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -9,16 +11,17 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
 
-#include <deal.II/fe/fe_simplex_p.h>
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/mapping_fe.h>
-#include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/mapping_q.h>
 
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria.h>
 
+#include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/trilinos_precondition.h>
@@ -28,7 +31,6 @@
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
-#include <deal.II/lac/precondition.h>
 
 #include <filesystem>
 #include <fstream>
@@ -37,228 +39,50 @@
 using namespace dealii;
 
 /**
- * Class managing the differential problem.
+ * Wave equation solver using the Newmark-β method.
+ *
+ * This is a direct second-order formulation that advances displacement,
+ * velocity, and acceleration simultaneously.
+ *
+ * Parameters:
+ *   β = 0.25, γ = 0.5 (average acceleration, unconditionally stable)
+ *
+ * Features:
+ *   - MPI parallel implementation
+ *   - Energy-conserving for the chosen parameters
+ *   - Solves one linear system per time step
  */
-class Wave
+class WaveNewmark
 {
 public:
-  // Physical dimension (1D, 2D, 3D)
-  static constexpr unsigned int dim = 2;
+  // Use dimension from common header
+  static constexpr unsigned int dim = WaveEquation::dim;
 
-  // Test case selector: 1 for EX1, 2 for EX2
-  enum TestCase { EX1 = 1, EX2 = 2 };
+  // Use TestCase from common namespace
+  using TestCase = WaveEquation::TestCase;
 
-  // Initial condition.
-  class FunctionU0 : public Function<dim>
-  {
-  public:
-    // Constructor.
-    FunctionU0() = default;
-
-    // Evaluation of the function.
-    virtual double
-    value([[maybe_unused]] const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      // const double r = p.norm();
-      // const double amplitude = 10.0;
-      // const double sigma = 0.5;
-
-      // return amplitude * std::exp(-(r*r)/ (2.0 * sigma * sigma));
-
-      // EX1 = EX2: u0​=sin( pi*(x+1)/2 ) * sin( pi*(y+1)/2 ) 
-      return std::sin(numbers::PI * (p[0] + 1) / 2) *
-             std::sin(numbers::PI * (p[1] + 1) / 2);
-    }
-  };
-
-    // Initial condition
-  class FunctionU1 : public Function<dim>
-  {
-  public:
-    // Constructor.
-    FunctionU1() = default;
-
-    // Evaluation of the function.
-    virtual double
-    value([[maybe_unused]] const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      // EX1 = EX2: u1​=0.0
-      return 0.0;
-    }
-  };
-
-  // Initial acceleration for EX1: a0 = -sin(π(x+1)/2) * sin(π(y+1)/2)
-  class FunctionU2_EX1 : public Function<dim>
-  {
-  public:
-    FunctionU2_EX1() = default;
-
-    virtual double value([[maybe_unused]] const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      // EX1: u_tt(0) = -cos(0) * φ(x,y) = -φ(x,y)
-      return -(std::sin(numbers::PI * (p[0] + 1) / 2) *
-               std::sin(numbers::PI * (p[1] + 1) / 2));
-    }
-  };
-
-  // Initial acceleration for EX2: a0 = -π²/2 * sin(π(x+1)/2) * sin(π(y+1)/2)
-  class FunctionU2_EX2 : public Function<dim>
-  {
-  public:
-    FunctionU2_EX2() = default;
-
-    virtual double value([[maybe_unused]] const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      // EX2: u_tt(0) = -(π/√2)² * φ(x,y) = -π²/2 * φ(x,y)
-      return -(numbers::PI * numbers::PI * 0.5) *
-             (std::sin(numbers::PI * (p[0] + 1) / 2) *
-              std::sin(numbers::PI * (p[1] + 1) / 2));
-    }
-  };
-
-
-
-  // Dirichlet boundary function.
-  //
-  // This is implemented as a dealii::Function<dim>, instead of e.g. a lambda
-  // function, because this allows to use dealii boundary utilities directly.
-  class FunctionG : public Function<dim>
-  {
-  public:
-    // Constructor.
-    FunctionG()
-    {}
-
-    // Evaluation.
-    virtual double
-    value([[maybe_unused]] const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      // EX1 = EX2: g=0.0
-      return 0.0;
-    }
-  };
-
-  // Forcing term for EX1: f = (π²/2 - 1) * sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
-  class RightHandSideEX1 : public Function<dim>
-  {
-  public:
-    RightHandSideEX1() = default;
-
-    virtual double
-    value(const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      return (numbers::PI * numbers::PI / 2.0 - 1.0) *
-             std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-             std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-             std::cos(this->get_time());
-    }
-  };
-
-  // Forcing term for EX2: f = 0 (homogeneous wave equation)
-  class RightHandSideEX2 : public Function<dim>
-  {
-  public:
-    RightHandSideEX2() = default;
-
-    virtual double
-    value(const Point<dim> & /*p*/,
-          const unsigned int /*component*/ = 0) const override
-    {
-      return 0.0;
-    }
-  };
-
-  // Exact solution for EX1: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
-class ExactSolutionEX1 : public Function<dim>
-{
-public:
-  ExactSolutionEX1() = default;
-
-  virtual double
-  value(const Point<dim> &p,
-        const unsigned int /*component*/ = 0) const override
-  {
-    return std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-           std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-           std::cos(this->get_time());
-  }
-
-  virtual Tensor<1, dim>
-  gradient(const Point<dim> &p,
-           const unsigned int /*component*/ = 0) const override
-  {
-    Tensor<1, dim> result;
-    const double time_factor = std::cos(this->get_time());
-
-    result[0] = numbers::PI * 0.5 *
-                std::cos(numbers::PI * (p[0] + 1.0) / 2.0) *
-                std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-                time_factor;
-
-    result[1] = numbers::PI * 0.5 *
-                std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-                std::cos(numbers::PI * (p[1] + 1.0) / 2.0) *
-                time_factor;
-
-    return result;
-  }
-};
-
-// Exact solution for EX2: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(π/√2 * t)
-class ExactSolutionEX2 : public Function<dim>
-{
-public:
-  ExactSolutionEX2() = default;
-
-  virtual double
-  value(const Point<dim> &p,
-        const unsigned int /*component*/ = 0) const override
-  {
-    const double omega = numbers::PI / std::sqrt(2.0);
-    return std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-           std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-           std::cos(omega * this->get_time());
-  }
-
-  virtual Tensor<1, dim>
-  gradient(const Point<dim> &p,
-           const unsigned int /*component*/ = 0) const override
-  {
-    Tensor<1, dim> result;
-    const double omega = numbers::PI / std::sqrt(2.0);
-    const double time_factor = std::cos(omega * this->get_time());
-
-    result[0] = numbers::PI * 0.5 *
-                std::cos(numbers::PI * (p[0] + 1.0) / 2.0) *
-                std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-                time_factor;
-
-    result[1] = numbers::PI * 0.5 *
-                std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-                std::cos(numbers::PI * (p[1] + 1.0) / 2.0) *
-                time_factor;
-
-    return result;
-  }
-};
-
-
-
-  Wave(const double                                   &domain_left_,
-      const double                                    &domain_right_,
-      const unsigned int                              &n_refine_,
-      const unsigned int                              &r_,
-      const double                                    &T_,
-      const double                                    &beta_,
-      const double                                    &gamma_,
-      const double                                    &delta_t_,
-      const TestCase                                  test_case_ = EX1)
+  /**
+   * Constructor.
+   *
+   * @param domain_left_   Left boundary of the square domain
+   * @param domain_right_  Right boundary of the square domain
+   * @param n_refine_      Number of global mesh refinements
+   * @param r_             Polynomial degree for finite elements
+   * @param T_             Final simulation time
+   * @param beta_          Newmark β parameter (default: 0.25)
+   * @param gamma_         Newmark γ parameter (default: 0.5)
+   * @param delta_t_       Time step size
+   * @param test_case_     Test case selector (EX1 or EX2)
+   */
+  WaveNewmark(const double       &domain_left_,
+              const double       &domain_right_,
+              const unsigned int &n_refine_,
+              const unsigned int &r_,
+              const double       &T_,
+              const double       &beta_,
+              const double       &gamma_,
+              const double       &delta_t_,
+              const TestCase      test_case_ = TestCase::EX1)
     : domain_left(domain_left_)
     , domain_right(domain_right_)
     , n_refine(n_refine_)
@@ -268,18 +92,28 @@ public:
     , gamma(gamma_)
     , delta_t(delta_t_)
     , test_case(test_case_)
-    , mpi_size(Utilities:: MPI::n_mpi_processes(MPI_COMM_WORLD))
+    , mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , mesh(MPI_COMM_WORLD)
     , pcout(std::cout, mpi_rank == 0)
   {}
 
-  // Run the time-dependent simulation.
+  /**
+   * Run the time-dependent simulation.
+   *
+   * @param exact_solution  Pointer to exact solution for error computation (optional)
+   */
   void run(Function<dim> *exact_solution = nullptr);
 
-  // Compute the error against a given exact solution.
+  /**
+   * Compute the error against a given exact solution.
+   *
+   * @param norm_type       Type of norm (L2 or H1)
+   * @param exact_solution  Reference to exact solution function
+   * @return                The computed error norm
+   */
   double compute_error(const VectorTools::NormType &norm_type,
-                Function<dim>         &exact_solution) const;
+                       Function<dim>               &exact_solution) const;
 
 protected:
   // Initialization.
@@ -294,13 +128,10 @@ protected:
   // Output.
   void output() const;
 
-  // Compute total energy:  E = 0.5 * (v^T M v + u^T A u)
+  // Compute total energy: E = 0.5 * (v^T M v + u^T A u)
   double compute_total_energy() const;
 
-  // // Name of the mesh.
-  // const std::string mesh_file_name;
-
-  // Domain boundaries for hyper cube. 
+  // Domain boundaries for hyper cube.
   const double domain_left;
   const double domain_right;
 
@@ -313,9 +144,9 @@ protected:
   // Final time.
   const double T;
 
-  // Newmark parameters
-  const double beta; // 0.25
-  const double gamma; // 0.5
+  // Newmark parameters.
+  const double beta;  // 0.25 for average acceleration
+  const double gamma; // 0.5 for average acceleration
 
   // Time step.
   const double delta_t;
@@ -326,6 +157,7 @@ protected:
   // Current timestep number.
   unsigned int timestep_number = 0;
 
+  // Test case selector.
   const TestCase test_case;
 
   // Number of MPI processes.
@@ -342,8 +174,6 @@ protected:
 
   // Quadrature formula.
   std::unique_ptr<Quadrature<dim>> quadrature;
-
-  // no quadrature boundary perchè non abbiamo condizioni di neumann
 
   // DoF handler.
   DoFHandler<dim> dof_handler;
@@ -372,31 +202,29 @@ protected:
   // Acceleration, with ghost elements.
   TrilinosWrappers::MPI::Vector acceleration;
 
-  // Mass and stiffness matrices for energy computation
+  // Mass and stiffness matrices for energy computation.
   TrilinosWrappers::SparseMatrix mass_matrix;
   TrilinosWrappers::SparseMatrix stiffness_matrix;
 
+  // ----- Dispersion analysis: center point tracking -----
 
-    // ----- Dispersion analysis:  center point tracking -----
-  
-  // File stream for center point time series
-  std:: ofstream center_point_file;
-  
-  // DoF index corresponding to the center point (0,0)
+  // File stream for center point time series.
+  std::ofstream center_point_file;
+
+  // DoF index corresponding to the center point (0,0).
   types::global_dof_index center_dof_index;
-  
-  // Flag indicating if center point is owned by this MPI process
+
+  // Flag indicating if center point is owned by this MPI process.
   bool center_point_is_local;
-  
-  // Find the DoF closest to a given point
+
+  // Find the DoF closest to the center point.
   void find_center_point_dof();
-  
-  // Record solution value at center point
+
+  // Record solution value at center point.
   void record_center_point_value();
-  
 
   // Output stream for process 0.
   ConditionalOStream pcout;
 };
 
-#endif
+#endif // WAVE_NEWMARK_HPP

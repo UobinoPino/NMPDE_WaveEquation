@@ -1,7 +1,7 @@
 #include "Wave.hpp"
 
 void
-Wave::setup()
+WaveNewmark::setup()
 {
   pcout << "===============================================" << std::endl;
 
@@ -90,70 +90,66 @@ Wave::setup()
 
     pcout << "  Initializing the stiffness matrix" << std::endl;
     stiffness_matrix.reinit(sparsity);
-
   }
 
   pcout << "-----------------------------------------------" << std::endl;
-
 }
 
-// DISPERSION
 void
-Wave::find_center_point_dof()
+WaveNewmark::find_center_point_dof()
 {
   const Point<dim> center_point(0.0, 0.0);
 
   center_point_is_local = false;
-  center_dof_index = numbers::invalid_dof_index;
+  center_dof_index      = numbers::invalid_dof_index;
 
   for (const auto &cell : dof_handler.active_cell_iterators())
-  {
-    if (! cell->is_locally_owned())
-      continue;
-
-    const Point<dim> cell_center = cell->center();
-    const double cell_diameter = cell->diameter();
-
-    if (center_point.distance(cell_center) < cell_diameter)
     {
-      std::vector<types::global_dof_index> local_dof_indices(fe->dofs_per_cell);
-      cell->get_dof_indices(local_dof_indices);
+      if (!cell->is_locally_owned())
+        continue;
 
-      double min_distance = std::numeric_limits<double>::max();
+      const Point<dim> cell_center   = cell->center();
+      const double     cell_diameter = cell->diameter();
 
-      for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell; ++v)
-      {
-        const Point<dim> vertex = cell->vertex(v);
-        const double distance = center_point.distance(vertex);
-
-        if (distance < min_distance)
+      if (center_point.distance(cell_center) < cell_diameter)
         {
-          min_distance = distance;
-          center_dof_index = local_dof_indices[v];
-        }
-      }
+          std::vector<types::global_dof_index> local_dof_indices(fe->dofs_per_cell);
+          cell->get_dof_indices(local_dof_indices);
 
-      if (min_distance < 1e-10)
-      {
-        center_point_is_local = true;
-        pcout << "Center point DoF found:  index = " << center_dof_index
-              << ", distance from (0,0) = " << min_distance << std::endl;
-        break;
-      }
+          double min_distance = std::numeric_limits<double>::max();
+
+          for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell; ++v)
+            {
+              const Point<dim> vertex   = cell->vertex(v);
+              const double     distance = center_point.distance(vertex);
+
+              if (distance < min_distance)
+                {
+                  min_distance     = distance;
+                  center_dof_index = local_dof_indices[v];
+                }
+            }
+
+          if (min_distance < 1e-10)
+            {
+              center_point_is_local = true;
+              pcout << "Center point DoF found: index = " << center_dof_index
+                    << ", distance from (0,0) = " << min_distance << std::endl;
+              break;
+            }
+        }
     }
-  }
 
   if (center_point_is_local)
-  {
-    center_point_file.open("center_point_solution.csv");
-    center_point_file << "time,solution,velocity,acceleration\n";
-    center_point_file << std::setprecision(12);
-  }
+    {
+      center_point_file.open("center_point_solution.csv");
+      center_point_file << "time,solution,velocity,acceleration\n";
+      center_point_file << std::setprecision(12);
+    }
 }
 
-
 void
-Wave::record_center_point_value()
+WaveNewmark::record_center_point_value()
 {
   if (!center_point_is_local)
     return;
@@ -162,17 +158,15 @@ Wave::record_center_point_value()
   const double v_center = velocity[center_dof_index];
   const double a_center = acceleration[center_dof_index];
 
-  center_point_file << time << ","
-                    << u_center << ","
-                    << v_center << ","
+  center_point_file << time << "," << u_center << "," << v_center << ","
                     << a_center << "\n";
 }
 
 void
-Wave::assemble()
+WaveNewmark::assemble()
 {
   const unsigned int dofs_per_cell = fe->dofs_per_cell;
-  const unsigned int n_q = quadrature->size();
+  const unsigned int n_q           = quadrature->size();
 
   FEValues<dim> fe_values(*fe,
                           *quadrature,
@@ -187,22 +181,19 @@ Wave::assemble()
 
   std::vector<types::global_dof_index> dof_indices(dofs_per_cell);
 
-  system_matrix = 0.0;
-  system_rhs    = 0.0;
+  system_matrix    = 0.0;
+  system_rhs       = 0.0;
   mass_matrix      = 0.0;
   stiffness_matrix = 0.0;
 
-  std::vector<double> solution_old_values(n_q);
+  std::vector<double>         solution_old_values(n_q);
   std::vector<Tensor<1, dim>> solution_old_grads(n_q);
-  std::vector<double> v_old_values(n_q);
-  std::vector<double> a_old_values(n_q);
+  std::vector<double>         v_old_values(n_q);
+  std::vector<double>         a_old_values(n_q);
 
-  std::unique_ptr<Function<dim>> rhs_function;
-  if (test_case == EX1)
-    rhs_function = std::make_unique<RightHandSideEX1>();
-  else
-    rhs_function = std::make_unique<RightHandSideEX2>();
-
+  // Create forcing term using factory function
+  std::unique_ptr<Function<dim>> rhs_function =
+    WaveEquation::create_forcing_term(test_case);
   rhs_function->set_time(time);
 
   for (const auto &cell : dof_handler.active_cell_iterators())
@@ -212,9 +203,9 @@ Wave::assemble()
 
       fe_values.reinit(cell);
 
-      cell_matrix = 0.0;
-      cell_rhs    = 0.0;
-      cell_mass_matrix     = 0.0;
+      cell_matrix           = 0.0;
+      cell_rhs              = 0.0;
+      cell_mass_matrix      = 0.0;
       cell_stiffness_matrix = 0.0;
 
       const double c1 = 1.0 / (beta * delta_t * delta_t);
@@ -228,7 +219,8 @@ Wave::assemble()
 
       for (unsigned int q = 0; q < n_q; ++q)
         {
-          const double f_new_loc = rhs_function->value(fe_values.quadrature_point(q));
+          const double f_new_loc =
+            rhs_function->value(fe_values.quadrature_point(q));
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
@@ -241,9 +233,10 @@ Wave::assemble()
                                        fe_values.JxW(q);
 
                   // Stiffness term: K
-                  cell_matrix(i, j) += scalar_product(fe_values.shape_grad(i, q),
-                                                      fe_values.shape_grad(j, q)) *
-                                       fe_values.JxW(q);
+                  cell_matrix(i, j) +=
+                    scalar_product(fe_values.shape_grad(i, q),
+                                   fe_values.shape_grad(j, q)) *
+                    fe_values.JxW(q);
 
                   // For energy computation:
                   cell_mass_matrix(i, j) += fe_values.shape_value(i, q) *
@@ -251,21 +244,20 @@ Wave::assemble()
                                             fe_values.JxW(q);
 
                   cell_stiffness_matrix(i, j) +=
-                      scalar_product(fe_values.shape_grad(i, q),
-                                     fe_values.shape_grad(j, q)) *
-                      fe_values.JxW(q);
+                    scalar_product(fe_values.shape_grad(i, q),
+                                   fe_values.shape_grad(j, q)) *
+                    fe_values.JxW(q);
                 }
 
               // RHS: M * (c1*u^n + c2*v^n + c3*a^n) + F^{n+1}
               cell_rhs(i) += fe_values.shape_value(i, q) *
-                             (c1 * solution_old_values[q]
-                              + c2 * v_old_values[q]
-                              + c3 * a_old_values[q]) *
+                             (c1 * solution_old_values[q] +
+                              c2 * v_old_values[q] +
+                              c3 * a_old_values[q]) *
                              fe_values.JxW(q);
 
-              cell_rhs(i) += f_new_loc *
-                             fe_values.shape_value(i, q) *
-                             fe_values.JxW(q);
+              cell_rhs(i) +=
+                f_new_loc * fe_values.shape_value(i, q) * fe_values.JxW(q);
             }
         }
 
@@ -284,31 +276,27 @@ Wave::assemble()
 
   // ------------------- Dirichlet boundary conditions -------------------
   {
-      std::map<types::global_dof_index, double> boundary_values;
-      FunctionG bc_function;
+    std::map<types::global_dof_index, double> boundary_values;
+    WaveEquation::HomogeneousDirichletBC      bc_function;
 
-      std::map<types::boundary_id, const Function<dim> *> boundary_functions;
-      boundary_functions[0] = &bc_function;
-      boundary_functions[1] = &bc_function;
-      boundary_functions[2] = &bc_function;
-      boundary_functions[3] = &bc_function;
+    std::map<types::boundary_id, const Function<dim> *> boundary_functions;
+    boundary_functions[0] = &bc_function;
+    boundary_functions[1] = &bc_function;
+    boundary_functions[2] = &bc_function;
+    boundary_functions[3] = &bc_function;
 
-      VectorTools::interpolate_boundary_values(dof_handler,
-                                               boundary_functions,
-                                               boundary_values);
+    VectorTools::interpolate_boundary_values(dof_handler,
+                                             boundary_functions,
+                                             boundary_values);
 
-      MatrixTools::apply_boundary_values(boundary_values,
-                                         system_matrix,
-                                         solution_owned,
-                                         system_rhs,
-                                         true);
+    MatrixTools::apply_boundary_values(
+      boundary_values, system_matrix, solution_owned, system_rhs, true);
   }
 }
 
 void
-Wave::solve_linear_system()
+WaveNewmark::solve_linear_system()
 {
-
   ReductionControl solver_control(10000, 1.0e-16, 1.0e-6);
 
   SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
@@ -318,7 +306,7 @@ Wave::solve_linear_system()
 }
 
 void
-Wave::output() const
+WaveNewmark::output() const
 {
   DataOut<dim> data_out;
 
@@ -331,46 +319,49 @@ Wave::output() const
 
   data_out.build_patches();
 
-  const std::string output_file_name = "output-hypercube";
+  const std::string output_file_name = "output-newmark";
 
-  data_out.write_vtu_with_pvtu_record("./",
-                                      output_file_name,
-                                      timestep_number,
-                                      MPI_COMM_WORLD);
+  data_out.write_vtu_with_pvtu_record(
+    "./", output_file_name, timestep_number, MPI_COMM_WORLD);
 }
 
 void
-Wave::run(Function<dim> *exact_solution)
+WaveNewmark::run(Function<dim> *exact_solution)
 {
   std::ofstream error_file;
-  if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0 && exact_solution != nullptr)
-  {
-    error_file.open("errors.csv");
-    error_file << "time,L2_error,H1_error\n";
-  }
+  if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0 &&
+      exact_solution != nullptr)
+    {
+      error_file.open("errors.csv");
+      error_file << "time,L2_error,H1_error\n";
+    }
 
   std::ofstream energy_file;
   if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
-  {
-    energy_file.open("energy_2.csv");
-    energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
-  }
+    {
+      energy_file.open("energy.csv");
+      energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
+    }
 
   // Setup initial conditions.
   {
     setup();
     find_center_point_dof();
 
-    VectorTools::interpolate(dof_handler, FunctionU0(), solution_owned);
+    // Use common initial condition classes
+    VectorTools::interpolate(dof_handler,
+                             WaveEquation::InitialDisplacement(),
+                             solution_owned);
     solution = solution_owned;
 
-    VectorTools::interpolate(dof_handler, FunctionU1(), velocity_owned);
+    VectorTools::interpolate(dof_handler,
+                             WaveEquation::InitialVelocity(),
+                             velocity_owned);
     velocity = velocity_owned;
 
-    if (test_case == EX1)
-      VectorTools::interpolate(dof_handler, FunctionU2_EX1(), acceleration_owned);
-    else
-      VectorTools::interpolate(dof_handler, FunctionU2_EX2(), acceleration_owned);
+    // Use factory function for initial acceleration
+    auto initial_accel = WaveEquation::create_initial_acceleration(test_case);
+    VectorTools::interpolate(dof_handler, *initial_accel, acceleration_owned);
     acceleration = acceleration_owned;
 
     time            = 0.0;
@@ -407,79 +398,77 @@ Wave::run(Function<dim> *exact_solution)
 
       // Update acceleration: a^{n+1} = N1*(u^{n+1}-u^n) - N2*v^n - N3*a^n
       acceleration_owned = 0.0;
-      acceleration_owned.add( N1, solution_owned);
+      acceleration_owned.add(N1, solution_owned);
       acceleration_owned.add(-N1, u_old);
       acceleration_owned.add(-N2, v_old);
       acceleration_owned.add(-N3, a_old);
 
       // Update velocity: v^{n+1} = v^n + dt*((1-gamma)*a^n + gamma*a^{n+1})
       velocity_owned = v_old;
-      velocity_owned.add(delta_t*(1.0 - gamma), a_old);
-      velocity_owned.add(delta_t*gamma, acceleration_owned);
+      velocity_owned.add(delta_t * (1.0 - gamma), a_old);
+      velocity_owned.add(delta_t * gamma, acceleration_owned);
 
-      // =====================================================================
-      // FIX: Update ghost values BEFORE computing errors!
-      // This was the bug - error was computed with old solution values
-      // =====================================================================
-      solution = solution_owned;
-      velocity = velocity_owned;
+      // Update ghost values BEFORE computing errors
+      solution     = solution_owned;
+      velocity     = velocity_owned;
       acceleration = acceleration_owned;
 
-      // Compute errors at current time (NOW using UPDATED solution!)
+      // Compute errors at current time
       int error_interval = 10;
       if (exact_solution != nullptr && timestep_number % error_interval == 0)
-      {
-        const double error_L2 = compute_error(VectorTools::L2_norm, *exact_solution);
-        const double error_H1 = compute_error(VectorTools::H1_norm, *exact_solution);
+        {
+          const double error_L2 =
+            compute_error(VectorTools::L2_norm, *exact_solution);
+          const double error_H1 =
+            compute_error(VectorTools::H1_norm, *exact_solution);
 
-        // Write to CSV with full precision
-        error_file << std::setprecision(12) << std::scientific
-                   << time << "," << error_L2 << "," << error_H1 << "\n";
+          error_file << std::setprecision(12) << std::scientific << time << ","
+                     << error_L2 << "," << error_H1 << "\n";
 
-        // Reset formatting for console output (undo the fixed/setprecision(2) from timestep printout)
-        pcout << std::scientific << std::setprecision(6)
-              << "L2 error = " << error_L2
-              << ", H1 error = " << error_H1 << std::endl;
-      }
+          pcout << std::scientific << std::setprecision(6)
+                << "L2 error = " << error_L2 << ", H1 error = " << error_H1
+                << std::endl;
+        }
 
       record_center_point_value();
 
       const double E = compute_total_energy();
 
       if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
-      {
-        energy_file << std::setprecision(12) << std::scientific
-                    << time << "," << E << "\n";
-        pcout << std::scientific << std::setprecision(6)
-              << "Energy = " << E << std::endl;
-      }
+        {
+          energy_file << std::setprecision(12) << std::scientific << time << ","
+                      << E << "\n";
+          pcout << std::scientific << std::setprecision(6) << "Energy = " << E
+                << std::endl;
+        }
 
-      // Reset to default formatting for next iteration
       pcout << std::defaultfloat;
 
       output();
     }
 
-    if (error_file.is_open())
-      error_file.close();
-    if (energy_file.is_open())
-      energy_file.close();
-    if (center_point_file.is_open())
+  if (error_file.is_open())
+    error_file.close();
+  if (energy_file.is_open())
+    energy_file.close();
+  if (center_point_file.is_open())
     {
       center_point_file.close();
-      pcout << "Center point time series saved to: center_point_solution.csv" << std::endl;
+      pcout << "Center point time series saved to: center_point_solution.csv"
+            << std::endl;
     }
 }
 
 double
-Wave::compute_error(const VectorTools::NormType &norm_type,
-                    Function<dim> &exact_solution) const
+WaveNewmark::compute_error(const VectorTools::NormType &norm_type,
+                           Function<dim>               &exact_solution) const
 {
   Assert(fe.get() != nullptr, ExcMessage("FE not initialized"));
-  Assert(dof_handler.n_dofs() == solution.size(), ExcMessage("solution size != n_dofs"));
+  Assert(dof_handler.n_dofs() == solution.size(),
+         ExcMessage("solution size != n_dofs"));
   Assert(mesh.n_active_cells() > 0, ExcMessage("mesh has no active cells"));
 
-  QGauss<dim> quadrature_error(r + 2);
+  QGauss<dim>   quadrature_error(r + 2);
   MappingQ<dim> mapping(1);
 
   exact_solution.set_time(time);
@@ -494,16 +483,14 @@ Wave::compute_error(const VectorTools::NormType &norm_type,
                                     quadrature_error,
                                     norm_type);
 
-  const double error = VectorTools::compute_global_error(mesh,
-                                                         error_per_cell,
-                                                         norm_type);
+  const double error =
+    VectorTools::compute_global_error(mesh, error_per_cell, norm_type);
 
   return error;
 }
 
-
 double
-Wave::compute_total_energy() const
+WaveNewmark::compute_total_energy() const
 {
   TrilinosWrappers::MPI::Vector Mv(velocity_owned);
   TrilinosWrappers::MPI::Vector Au(solution_owned);
@@ -511,7 +498,7 @@ Wave::compute_total_energy() const
   mass_matrix.vmult(Mv, velocity_owned);
   stiffness_matrix.vmult(Au, solution_owned);
 
-  const double kinetic = 0.5 * (velocity_owned * Mv);
+  const double kinetic   = 0.5 * (velocity_owned * Mv);
   const double potential = 0.5 * (solution_owned * Au);
 
   return kinetic + potential;
