@@ -1,13 +1,13 @@
 #include "WaveParallel.hpp"
 
-WaveParallel::WaveParallel(const unsigned int degree_,
-                           const double       T_,
-                           const double       theta_,
-                           const double       delta_t_,
-                           const double       domain_left_,
-                           const double       domain_right_,
-                           const unsigned int n_refine_,
-                           const TestCase     test_case_)
+WaveThetaParallel::WaveThetaParallel(const unsigned int degree_,
+                                     const double       T_,
+                                     const double       theta_,
+                                     const double       delta_t_,
+                                     const double       domain_left_,
+                                     const double       domain_right_,
+                                     const unsigned int n_refine_,
+                                     const TestCase     test_case_)
   : degree(degree_)
   , T(T_)
   , theta(theta_)
@@ -25,11 +25,11 @@ WaveParallel::WaveParallel(const unsigned int degree_,
 {}
 
 void
-WaveParallel::setup_system()
+WaveThetaParallel::setup_system()
 {
   pcout << "===============================================" << std::endl;
   pcout << "Setting up the parallel system" << std::endl;
-  pcout << "Test case: EX" << test_case << std::endl;
+  pcout << "Test case: " << WaveEquation::test_case_name(test_case) << std::endl;
 
   // Create the mesh.
   {
@@ -48,8 +48,8 @@ WaveParallel::setup_system()
       create_description_from_triangulation(mesh_serial, MPI_COMM_WORLD);
     triangulation.create_triangulation(construction_data);
 
-    pcout << "  Number of active cells: " << triangulation.n_global_active_cells()
-          << std::endl;
+    pcout << "  Number of active cells: "
+          << triangulation.n_global_active_cells() << std::endl;
   }
 
   // Initialize the finite element space.
@@ -61,7 +61,8 @@ WaveParallel::setup_system()
 
     pcout << "  Degree                     = " << fe->degree << std::endl;
     pcout << "  DoFs per cell              = " << fe->dofs_per_cell << std::endl;
-    pcout << "  Quadrature points per cell = " << quadrature->size() << std::endl;
+    pcout << "  Quadrature points per cell = " << quadrature->size()
+          << std::endl;
   }
 
   // Initialize the DoF handler.
@@ -116,62 +117,61 @@ WaveParallel::setup_system()
   pcout << "===============================================" << std::endl;
 }
 
-// DISPERSION ANALYSIS
 void
-WaveParallel::find_center_point_dof()
+WaveThetaParallel::find_center_point_dof()
 {
   const Point<dim> center_point(0.0, 0.0);
 
   center_point_is_local = false;
-  center_dof_index = numbers::invalid_dof_index;
+  center_dof_index      = numbers::invalid_dof_index;
 
   for (const auto &cell : dof_handler.active_cell_iterators())
-  {
-    if (!cell->is_locally_owned())
-      continue;
-
-    const Point<dim> cell_center = cell->center();
-    const double cell_diameter = cell->diameter();
-
-    if (center_point.distance(cell_center) < cell_diameter)
     {
-      std::vector<types::global_dof_index> local_dof_indices(fe->dofs_per_cell);
-      cell->get_dof_indices(local_dof_indices);
+      if (!cell->is_locally_owned())
+        continue;
 
-      double min_distance = std::numeric_limits<double>::max();
+      const Point<dim> cell_center   = cell->center();
+      const double     cell_diameter = cell->diameter();
 
-      for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell; ++v)
-      {
-        const Point<dim> vertex = cell->vertex(v);
-        const double distance = center_point.distance(vertex);
-
-        if (distance < min_distance)
+      if (center_point.distance(cell_center) < cell_diameter)
         {
-          min_distance = distance;
-          center_dof_index = local_dof_indices[v];
-        }
-      }
+          std::vector<types::global_dof_index> local_dof_indices(fe->dofs_per_cell);
+          cell->get_dof_indices(local_dof_indices);
 
-      if (min_distance < 1e-10)
-      {
-        center_point_is_local = true;
-        pcout << "Center point DoF found: index = " << center_dof_index
-              << ", distance from (0,0) = " << min_distance << std::endl;
-        break;
-      }
+          double min_distance = std::numeric_limits<double>::max();
+
+          for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell; ++v)
+            {
+              const Point<dim> vertex   = cell->vertex(v);
+              const double     distance = center_point.distance(vertex);
+
+              if (distance < min_distance)
+                {
+                  min_distance     = distance;
+                  center_dof_index = local_dof_indices[v];
+                }
+            }
+
+          if (min_distance < 1e-10)
+            {
+              center_point_is_local = true;
+              pcout << "Center point DoF found: index = " << center_dof_index
+                    << ", distance from (0,0) = " << min_distance << std::endl;
+              break;
+            }
+        }
     }
-  }
 
   if (center_point_is_local)
-  {
-    center_point_file.open("center_point_solution_theta.csv");
-    center_point_file << "time,solution,velocity\n";
-    center_point_file << std::setprecision(12);
-  }
+    {
+      center_point_file.open("center_point_solution_theta.csv");
+      center_point_file << "time,solution,velocity\n";
+      center_point_file << std::setprecision(12);
+    }
 }
 
 void
-WaveParallel::record_center_point_value()
+WaveThetaParallel::record_center_point_value()
 {
   if (!center_point_is_local)
     return;
@@ -179,13 +179,11 @@ WaveParallel::record_center_point_value()
   const double u_center = solution_u[center_dof_index];
   const double v_center = solution_v[center_dof_index];
 
-  center_point_file << time << ","
-                    << u_center << ","
-                    << v_center << "\n";
+  center_point_file << time << "," << u_center << "," << v_center << "\n";
 }
 
 void
-WaveParallel::assemble_matrices()
+WaveThetaParallel::assemble_matrices()
 {
   pcout << "  Assembling mass and laplace matrices" << std::endl;
 
@@ -246,7 +244,7 @@ WaveParallel::assemble_matrices()
 }
 
 void
-WaveParallel::assemble_forcing_terms()
+WaveThetaParallel::assemble_forcing_terms()
 {
   // Compute forcing terms: theta * f^n + (1-theta) * f^{n-1}
   const unsigned int dofs_per_cell = fe->dofs_per_cell;
@@ -257,15 +255,12 @@ WaveParallel::assemble_forcing_terms()
                           update_values | update_quadrature_points |
                             update_JxW_values);
 
-  Vector<double> cell_rhs(dofs_per_cell);
+  Vector<double>                       cell_rhs(dofs_per_cell);
   std::vector<types::global_dof_index> dof_indices(dofs_per_cell);
 
-  // Create appropriate forcing function based on test case
-  std::unique_ptr<Function<dim>> rhs_function;
-  if (test_case == EX1)
-    rhs_function = std::make_unique<RightHandSideEX1>();
-  else
-    rhs_function = std::make_unique<RightHandSideEX2>();
+  // Create appropriate forcing function using factory
+  std::unique_ptr<Function<dim>> rhs_function =
+    WaveEquation::create_forcing_term(test_case);
 
   // First compute theta * f^n
   forcing_terms_owned = 0.0;
@@ -281,12 +276,13 @@ WaveParallel::assemble_forcing_terms()
 
       for (unsigned int q = 0; q < n_q; ++q)
         {
-          const double rhs_value = rhs_function->value(fe_values.quadrature_point(q));
+          const double rhs_value =
+            rhs_function->value(fe_values.quadrature_point(q));
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
-              cell_rhs(i) += fe_values.shape_value(i, q) * rhs_value *
-                             fe_values.JxW(q);
+              cell_rhs(i) +=
+                fe_values.shape_value(i, q) * rhs_value * fe_values.JxW(q);
             }
         }
 
@@ -312,12 +308,13 @@ WaveParallel::assemble_forcing_terms()
 
       for (unsigned int q = 0; q < n_q; ++q)
         {
-          const double rhs_value = rhs_function->value(fe_values.quadrature_point(q));
+          const double rhs_value =
+            rhs_function->value(fe_values.quadrature_point(q));
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
-              cell_rhs(i) += fe_values.shape_value(i, q) * rhs_value *
-                             fe_values.JxW(q);
+              cell_rhs(i) +=
+                fe_values.shape_value(i, q) * rhs_value * fe_values.JxW(q);
             }
         }
 
@@ -334,7 +331,7 @@ WaveParallel::assemble_forcing_terms()
 }
 
 void
-WaveParallel::assemble_system_u()
+WaveThetaParallel::assemble_system_u()
 {
   // Assemble forcing terms first.
   assemble_forcing_terms();
@@ -365,7 +362,7 @@ WaveParallel::assemble_system_u()
   system_matrix.add(theta * theta * delta_t * delta_t, laplace_matrix);
 
   // Apply boundary conditions manually for Trilinos.
-  BoundaryValuesU boundary_values_u_function;
+  WaveEquation::HomogeneousDirichletBC boundary_values_u_function;
   boundary_values_u_function.set_time(time);
 
   std::map<types::global_dof_index, double> boundary_values;
@@ -381,9 +378,9 @@ WaveParallel::assemble_system_u()
         {
           system_rhs(dof_index) = bc_value;
 
-          const auto row_length = system_matrix.row_length(dof_index);
+          const auto                            row_length = system_matrix.row_length(dof_index);
           std::vector<types::global_dof_index> column_indices(row_length);
-          std::vector<double> column_values(row_length);
+          std::vector<double>                   column_values(row_length);
 
           unsigned int n_entries = 0;
           for (auto it = system_matrix.begin(dof_index);
@@ -394,10 +391,8 @@ WaveParallel::assemble_system_u()
               column_values[n_entries]  = (it->column() == dof_index) ? 1.0 : 0.0;
             }
 
-          system_matrix.set(dof_index,
-                            n_entries,
-                            column_indices.data(),
-                            column_values.data());
+          system_matrix.set(
+            dof_index, n_entries, column_indices.data(), column_values.data());
         }
     }
 
@@ -406,7 +401,7 @@ WaveParallel::assemble_system_u()
 }
 
 void
-WaveParallel::assemble_system_v()
+WaveThetaParallel::assemble_system_v()
 {
   // Assemble RHS for v equation:
   // M * v^{n-1} - theta*dt * A * u^n - (1-theta)*dt * A * u^{n-1} + forcing_terms
@@ -433,7 +428,7 @@ WaveParallel::assemble_system_v()
   system_matrix.copy_from(mass_matrix);
 
   // Apply boundary conditions manually for Trilinos.
-  BoundaryValuesV boundary_values_v_function;
+  WaveEquation::HomogeneousDirichletBC boundary_values_v_function;
   boundary_values_v_function.set_time(time);
 
   std::map<types::global_dof_index, double> boundary_values;
@@ -448,9 +443,9 @@ WaveParallel::assemble_system_v()
         {
           system_rhs(dof_index) = bc_value;
 
-          const auto row_length = system_matrix.row_length(dof_index);
+          const auto                            row_length = system_matrix.row_length(dof_index);
           std::vector<types::global_dof_index> column_indices(row_length);
-          std::vector<double> column_values(row_length);
+          std::vector<double>                   column_values(row_length);
 
           unsigned int n_entries = 0;
           for (auto it = system_matrix.begin(dof_index);
@@ -461,10 +456,8 @@ WaveParallel::assemble_system_v()
               column_values[n_entries]  = (it->column() == dof_index) ? 1.0 : 0.0;
             }
 
-          system_matrix.set(dof_index,
-                            n_entries,
-                            column_indices.data(),
-                            column_values.data());
+          system_matrix.set(
+            dof_index, n_entries, column_indices.data(), column_values.data());
         }
     }
 
@@ -473,76 +466,60 @@ WaveParallel::assemble_system_v()
 }
 
 void
-WaveParallel::solve_u()
+WaveThetaParallel::solve_u()
 {
   TrilinosWrappers::PreconditionSSOR preconditioner;
   preconditioner.initialize(
     system_matrix, TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
 
-  ReductionControl solver_control(/* maxiter = */ 1000,
-                                  /* tolerance = */ 1.0e-12,
-                                  /* reduce = */ 1.0e-6);
+  ReductionControl solver_control(1000, 1.0e-12, 1.0e-6);
 
   SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
   solver.solve(system_matrix, solution_u_owned, system_rhs, PreconditionIdentity());
 
-  pcout << "   u-equation: " << solver_control.last_step()
-        << " CG iterations." << std::endl;
+  pcout << "   u-equation: " << solver_control.last_step() << " CG iterations."
+        << std::endl;
 
   // Update ghosted vector.
   solution_u = solution_u_owned;
 }
 
 void
-WaveParallel::solve_v()
+WaveThetaParallel::solve_v()
 {
-
-
-  ReductionControl solver_control(/* maxiter = */ 1000,
-                                  /* tolerance = */ 1.0e-12,
-                                  /* reduce = */ 1.0e-6);
+  ReductionControl solver_control(1000, 1.0e-12, 1.0e-6);
 
   SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
   solver.solve(system_matrix, solution_v_owned, system_rhs, PreconditionIdentity());
 
-  pcout << "   v-equation: " << solver_control.last_step()
-        << " CG iterations." << std::endl;
+  pcout << "   v-equation: " << solver_control.last_step() << " CG iterations."
+        << std::endl;
 
   // Update ghosted vector.
   solution_v = solution_v_owned;
 }
 
-
 void
-WaveParallel::output_results() const
+WaveThetaParallel::output_results() const
 {
   DataOut<dim> data_out;
 
   data_out.add_data_vector(dof_handler, solution_u, "U");
   data_out.add_data_vector(dof_handler, solution_v, "V");
 
-  // Compute and output the exact solution
+  // Compute and output the exact solution.
   TrilinosWrappers::MPI::Vector exact_owned;
   exact_owned.reinit(locally_owned_dofs, MPI_COMM_WORLD);
 
   TrilinosWrappers::MPI::Vector exact_solution_vec;
   exact_solution_vec.reinit(locally_owned_dofs, locally_relevant_dofs, MPI_COMM_WORLD);
 
-  // Choose the appropriate exact solution based on test case
-  if (test_case == EX1)
-  {
-    ExactSolutionEX1 exact_func;
-    exact_func.set_time(time);
-    VectorTools::interpolate(dof_handler, exact_func, exact_owned);
-  }
-  else
-  {
-    ExactSolutionEX2 exact_func;
-    exact_func.set_time(time);
-    VectorTools::interpolate(dof_handler, exact_func, exact_owned);
-  }
+  // Choose the appropriate exact solution using factory
+  auto exact_func = WaveEquation::create_exact_solution(test_case);
+  exact_func->set_time(time);
+  VectorTools::interpolate(dof_handler, *exact_func, exact_owned);
   exact_solution_vec = exact_owned;
 
   data_out.add_data_vector(dof_handler, exact_solution_vec, "U_exact");
@@ -553,11 +530,11 @@ WaveParallel::output_results() const
   error_owned = solution_u_owned;
   error_owned -= exact_owned;
 
-  // Take absolute value of each entry
+  // Take absolute value of each entry.
   for (const auto &idx : locally_owned_dofs)
-  {
-    error_owned[idx] = std::abs(error_owned[idx]);
-  }
+    {
+      error_owned[idx] = std::abs(error_owned[idx]);
+    }
 
   TrilinosWrappers::MPI::Vector error_vec;
   error_vec.reinit(locally_owned_dofs, locally_relevant_dofs, MPI_COMM_WORLD);
@@ -573,30 +550,23 @@ WaveParallel::output_results() const
 
   data_out.build_patches();
 
-  data_out.write_vtu_with_pvtu_record("./",
-                                      "solution",
-                                      timestep_number,
-                                      MPI_COMM_WORLD);
+  data_out.write_vtu_with_pvtu_record(
+    "./", "solution", timestep_number, MPI_COMM_WORLD);
 }
 
 double
-WaveParallel::compute_error(const VectorTools::NormType &norm_type,
-                            Function<dim>               &exact_solution) const
+WaveThetaParallel::compute_error(const VectorTools::NormType &norm_type,
+                                 Function<dim>               &exact_solution) const
 {
-  // Assertions for safety (matching Newmark style)
   Assert(fe.get() != nullptr, ExcMessage("FE not initialized"));
   Assert(dof_handler.n_dofs() == solution_u.size(),
          ExcMessage("solution size != n_dofs"));
   Assert(triangulation.n_global_active_cells() > 0,
          ExcMessage("mesh has no active cells"));
 
-  // Use Gauss quadrature for hypercube meshes
   const QGauss<dim> quadrature_error(fe->degree + 2);
+  MappingQ<dim>     mapping(1);
 
-  // Use MappingQ for hypercube meshes (matching Newmark style)
-  MappingQ<dim> mapping(1);
-
-  // Set the time for the exact solution
   exact_solution.set_time(time);
 
   Vector<double> error_per_cell(triangulation.n_active_cells());
@@ -616,38 +586,29 @@ WaveParallel::compute_error(const VectorTools::NormType &norm_type,
 }
 
 double
-WaveParallel::compute_total_energy() const
+WaveThetaParallel::compute_total_energy() const
 {
-  // Compute total energy: E = 0.5 * (v^T M v + u^T A u)
-  // This is the same formula used in the Newmark implementation
-
   TrilinosWrappers::MPI::Vector Mv(solution_v_owned);
   TrilinosWrappers::MPI::Vector Au(solution_u_owned);
 
-  // Compute M * v
   mass_matrix.vmult(Mv, solution_v_owned);
-
-  // Compute A * u
   laplace_matrix.vmult(Au, solution_u_owned);
 
-  // Compute kinetic energy: 0.5 * v^T * M * v
-  const double kinetic_energy = 0.5 * (solution_v_owned * Mv);
-
-  // Compute potential energy: 0.5 * u^T * A * u
+  const double kinetic_energy   = 0.5 * (solution_v_owned * Mv);
   const double potential_energy = 0.5 * (solution_u_owned * Au);
 
   return kinetic_energy + potential_energy;
 }
 
 void
-WaveParallel::run(Function<dim> *exact_solution)
+WaveThetaParallel::run(Function<dim> *exact_solution)
 {
   setup_system();
 
   // Assemble mass and laplace matrices (done once).
   assemble_matrices();
 
-  // Find center point DoF for dispersion analysis
+  // Find center point DoF for dispersion analysis.
   find_center_point_dof();
 
   // Open a file to save error history (only on rank 0).
@@ -662,29 +623,28 @@ WaveParallel::run(Function<dim> *exact_solution)
   std::ofstream energy_file;
   if (mpi_rank == 0)
     {
-      energy_file.open("energy_parallel_2.csv");
+      energy_file.open("energy_parallel.csv");
       energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
     }
 
-  // Project initial conditions.
+  // Project initial conditions using common classes.
   pcout << "Projecting initial conditions" << std::endl;
 
   VectorTools::interpolate(dof_handler,
-                           InitialValuesU(),
+                           WaveEquation::InitialDisplacement(),
                            old_solution_u_owned);
   old_solution_u = old_solution_u_owned;
 
   VectorTools::interpolate(dof_handler,
-                           InitialValuesV(),
+                           WaveEquation::InitialVelocity(),
                            old_solution_v_owned);
   old_solution_v = old_solution_v_owned;
 
-  // Record initial condition at center point (t=0)
-  // We need to temporarily set solution_u/v to old values to record t=0
-  solution_u = old_solution_u;
-  solution_v = old_solution_v;
+  // Record initial condition at center point (t=0).
+  solution_u     = old_solution_u;
+  solution_v     = old_solution_v;
   double saved_time = time;
-  time = 0.0;
+  time              = 0.0;
   record_center_point_value();
   time = saved_time;
 
@@ -708,18 +668,17 @@ WaveParallel::run(Function<dim> *exact_solution)
       // Output results.
       output_results();
 
-      // Record center point value for dispersion analysis
+      // Record center point value for dispersion analysis.
       record_center_point_value();
 
-      // Compute and output energy using the Newmark formula:
-      // E = 0.5 * (v^T M v + u^T A u)
+      // Compute and output energy.
       TrilinosWrappers::MPI::Vector Mv(solution_v_owned);
       TrilinosWrappers::MPI::Vector Au(solution_u_owned);
       mass_matrix.vmult(Mv, solution_v_owned);
       laplace_matrix.vmult(Au, solution_u_owned);
-      const double kinetic_energy = 0.5 * (solution_v_owned * Mv);
+      const double kinetic_energy   = 0.5 * (solution_v_owned * Mv);
       const double potential_energy = 0.5 * (solution_u_owned * Au);
-      const double total_energy = kinetic_energy + potential_energy;
+      const double total_energy     = kinetic_energy + potential_energy;
 
       pcout << "   Total energy: " << total_energy
             << " (kinetic: " << kinetic_energy
@@ -727,24 +686,25 @@ WaveParallel::run(Function<dim> *exact_solution)
 
       if (mpi_rank == 0)
         {
-          energy_file << time << "," << total_energy << ","
-                      << kinetic_energy << "," << potential_energy << "\n";
+          energy_file << time << "," << total_energy << "," << kinetic_energy
+                      << "," << potential_energy << "\n";
         }
 
-      // Compute and output errors if exact solution is provided (matching Newmark style).
-      const int error_interval = 10; // Compute every N time steps
+      // Compute and output errors if exact solution is provided.
+      const int error_interval = 10;
       if (exact_solution != nullptr && timestep_number % error_interval == 0)
         {
-          const double error_L2 = compute_error(VectorTools::L2_norm, *exact_solution);
-          const double error_H1 = compute_error(VectorTools::H1_norm, *exact_solution);
+          const double error_L2 =
+            compute_error(VectorTools::L2_norm, *exact_solution);
+          const double error_H1 =
+            compute_error(VectorTools::H1_norm, *exact_solution);
 
           if (mpi_rank == 0)
             {
               error_file << time << "," << error_L2 << "," << error_H1 << "\n";
             }
 
-          pcout << "   Time = " << time
-                << ", L2 error = " << error_L2
+          pcout << "   Time = " << time << ", L2 error = " << error_L2
                 << ", H1 error = " << error_H1 << std::endl;
         }
 
@@ -756,17 +716,14 @@ WaveParallel::run(Function<dim> *exact_solution)
     }
 
   if (error_file.is_open())
-    {
-      error_file.close();
-    }
+    error_file.close();
   if (energy_file.is_open())
-    {
-      energy_file.close();
-    }
+    energy_file.close();
   if (center_point_file.is_open())
     {
       center_point_file.close();
-      pcout << "Center point time series saved to: center_point_solution_theta.csv" << std::endl;
+      pcout << "Center point time series saved to: center_point_solution_theta.csv"
+            << std::endl;
     }
 
   pcout << "-----------------------------------------------" << std::endl;

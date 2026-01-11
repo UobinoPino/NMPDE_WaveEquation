@@ -1,242 +1,100 @@
-#ifndef WAVE_HPP
-#define WAVE_HPP
+#ifndef WAVE_THETA_SERIAL_HPP
+#define WAVE_THETA_SERIAL_HPP
 
-#include <deal.II/base/quadrature_lib.h>
+#include "../../common/WaveTestCases.hpp"
+
 #include <deal.II/base/function.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/utilities.h>
-
-#include <deal.II/lac/vector.h>
-#include <deal.II/lac/sparse_matrix.h>
-#include <deal.II/lac/dynamic_sparsity_pattern.h>
-#include <deal.II/lac/solver_cg.h>
-#include <deal.II/lac/precondition.h>
-#include <deal.II/lac/affine_constraints.h>
-
-#include <deal.II/grid/tria.h>
-#include <deal.II/grid/grid_generator.h>
 
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe_q.h>
-
-#include <deal.II/numerics/data_out.h>
-#include <deal.II/numerics/vector_tools.h>
-#include <deal.II/numerics/matrix_creator.h>
-#include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/fe/mapping_q.h>
 
-#include <fstream>
-#include <iostream>
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/tria.h>
+
+#include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/dynamic_sparsity_pattern.h>
+#include <deal.II/lac/precondition.h>
+#include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/sparse_matrix.h>
+#include <deal.II/lac/vector.h>
+
+#include <deal.II/numerics/data_out.h>
+#include <deal.II/numerics/matrix_creator.h>
+#include <deal.II/numerics/matrix_tools.h>
+#include <deal.II/numerics/vector_tools.h>
+
 #include <cmath>
+#include <fstream>
 #include <functional>
+#include <iostream>
 
 using namespace dealii;
 
 /**
- * Class managing the wave equation problem.
- * Solves: u_tt = c^2 * Laplacian(u) + f
- * Using the theta-method time discretization.
+ * Serial wave equation solver using the θ-method.
  *
- * Supports two test cases:
- * EX1: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
- *      f = (π²/2 - 1) * sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
+ * Reformulates the wave equation as a first-order system in (u, v):
+ *   u_t = v
+ *   v_t = Δu + f
  *
- * EX2: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(π/√2 * t)
- *      f = 0 (homogeneous)
+ * Parameters:
+ *   θ = 0.5 (Crank-Nicolson scheme, second-order accurate)
+ *
+ * Features:
+ *   - Sequential implementation
+ *   - Solves two linear systems per time step (one for u, one for v)
  */
-class Wave
+class WaveThetaSerial
 {
 public:
-  // Physical dimension (1D, 2D, 3D)
-  static constexpr unsigned int dim = 2;
+  // Use dimension from common header
+  static constexpr unsigned int dim = WaveEquation::dim;
 
-  // Test case selector: 1 for EX1, 2 for EX2
-  enum TestCase { EX1 = 1, EX2 = 2 };
+  // Use TestCase from common namespace
+  using TestCase = WaveEquation::TestCase;
 
-  // Initial displacement condition.
-  // EX1 = EX2: u0 = sin(π(x+1)/2) * sin(π(y+1)/2)
-  class InitialValuesU : public Function<dim>
-  {
-  public:
-    InitialValuesU() = default;
+  /**
+   * Constructor.
+   *
+   * @param degree_       Polynomial degree for finite elements
+   * @param T_            Final simulation time
+   * @param theta_        θ parameter (default: 0.5 for Crank-Nicolson)
+   * @param delta_t_      Time step size
+   * @param domain_left_  Left boundary of the square domain
+   * @param domain_right_ Right boundary of the square domain
+   * @param n_refine_     Number of global mesh refinements
+   * @param test_case_    Test case selector (EX1 or EX2)
+   */
+  WaveThetaSerial(const unsigned int degree_,
+                  const double       T_,
+                  const double       theta_,
+                  const double       delta_t_,
+                  const double       domain_left_  = -1.0,
+                  const double       domain_right_ = 1.0,
+                  const unsigned int n_refine_     = 5,
+                  const TestCase     test_case_    = TestCase::EX1);
 
-    virtual double value(const Point<dim> &p,
-          const unsigned int component = 0) const override
-    {
-      (void)component;
-      return std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-             std::sin(numbers::PI * (p[1] + 1.0) / 2.0);
-    }
-  };
-
-  // Initial velocity condition.
-  // EX1 = EX2: v0 = 0 (since d/dt[cos(ωt)]|_{t=0} = 0 for any ω)
-  class InitialValuesV : public Function<dim>
-  {
-  public:
-    InitialValuesV() = default;
-
-    virtual double value(const Point<dim> & /*p*/,
-          const unsigned int component = 0) const override
-    {
-      (void)component;
-      return 0.0;
-    }
-  };
-
-  // Forcing term for EX1: f = (π²/2 - 1) * sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
-  class RightHandSideEX1 : public Function<dim>
-  {
-  public:
-    RightHandSideEX1() = default;
-
-    virtual double value(const Point<dim> &p,
-          const unsigned int component = 0) const override
-    {
-      (void)component;
-      return (numbers::PI * numbers::PI / 2.0 - 1.0) *
-             std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-             std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-             std::cos(this->get_time());
-    }
-  };
-
-  // Forcing term for EX2: f = 0 (homogeneous wave equation)
-  class RightHandSideEX2 : public Function<dim>
-  {
-  public:
-    RightHandSideEX2() = default;
-
-    virtual double value(const Point<dim> & /*p*/,
-          const unsigned int component = 0) const override
-    {
-      (void)component;
-      return 0.0;
-    }
-  };
-
-  // Boundary values for displacement u (Dirichlet BC).
-  class BoundaryValuesU : public Function<dim>
-  {
-  public:
-    BoundaryValuesU() = default;
-
-    virtual double value(const Point<dim> & /*p*/,
-          const unsigned int component = 0) const override
-    {
-      (void)component;
-      Assert(component == 0, ExcIndexRange(component, 0, 1));
-      return 0.0;  // Zero displacement at boundaries
-    }
-  };
-
-  // Boundary values for velocity v (Dirichlet BC).
-  class BoundaryValuesV : public Function<dim>
-  {
-  public:
-    BoundaryValuesV() = default;
-
-    virtual double value(const Point<dim> & /*p*/,
-          const unsigned int component = 0) const override
-    {
-      (void)component;
-      Assert(component == 0, ExcIndexRange(component, 0, 1));
-      return 0.0;  // Zero velocity at boundaries
-    }
-  };
-
-  // Exact solution for EX1: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(t)
-  class ExactSolutionEX1 : public Function<dim>
-  {
-  public:
-    ExactSolutionEX1() = default;
-
-    virtual double value(const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      return std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-             std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-             std::cos(this->get_time());
-    }
-
-    virtual Tensor<1, dim> gradient(const Point<dim> &p,
-             const unsigned int /*component*/ = 0) const override
-    {
-      Tensor<1, dim> result;
-      const double time_factor = std::cos(this->get_time());
-
-      // ∂u/∂x = (π/2) cos(π(x+1)/2) sin(π(y+1)/2) cos(t)
-      result[0] = numbers::PI * 0.5 *
-                  std::cos(numbers::PI * (p[0] + 1.0) / 2.0) *
-                  std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-                  time_factor;
-
-      // ∂u/∂y = (π/2) sin(π(x+1)/2) cos(π(y+1)/2) cos(t)
-      result[1] = numbers::PI * 0.5 *
-                  std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-                  std::cos(numbers::PI * (p[1] + 1.0) / 2.0) *
-                  time_factor;
-
-      return result;
-    }
-  };
-
-  // Exact solution for EX2: u(x,y,t) = sin(π(x+1)/2) * sin(π(y+1)/2) * cos(π/√2 * t)
-  class ExactSolutionEX2 : public Function<dim>
-  {
-  public:
-    ExactSolutionEX2() = default;
-
-    virtual double value(const Point<dim> &p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      const double omega = numbers::PI / std::sqrt(2.0);
-      return std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-             std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-             std::cos(omega * this->get_time());
-    }
-
-    virtual Tensor<1, dim> gradient(const Point<dim> &p,
-             const unsigned int /*component*/ = 0) const override
-    {
-      Tensor<1, dim> result;
-      const double omega = numbers::PI / std::sqrt(2.0);
-      const double time_factor = std::cos(omega * this->get_time());
-
-      // ∂u/∂x = (π/2) cos(π(x+1)/2) sin(π(y+1)/2) cos(π/√2 * t)
-      result[0] = numbers::PI * 0.5 *
-                  std::cos(numbers::PI * (p[0] + 1.0) / 2.0) *
-                  std::sin(numbers::PI * (p[1] + 1.0) / 2.0) *
-                  time_factor;
-
-      // ∂u/∂y = (π/2) sin(π(x+1)/2) cos(π(y+1)/2) cos(π/√2 * t)
-      result[1] = numbers::PI * 0.5 *
-                  std::sin(numbers::PI * (p[0] + 1.0) / 2.0) *
-                  std::cos(numbers::PI * (p[1] + 1.0) / 2.0) *
-                  time_factor;
-
-      return result;
-    }
-  };
-
-  // Constructor.
-  Wave(const unsigned int degree_,
-       const double       T_,
-       const double       theta_,
-       const double       delta_t_,
-       const double       domain_left_  = -1.0,
-       const double       domain_right_ = 1.0,
-       const unsigned int n_refine_     = 5,
-       const TestCase     test_case_    = EX1);
-
-  // Run the time-dependent simulation.
+  /**
+   * Run the time-dependent simulation.
+   *
+   * @param exact_solution  Pointer to exact solution for error computation (optional)
+   */
   void run(Function<dim> *exact_solution = nullptr);
 
+  /**
+   * Compute the error against a given exact solution.
+   */
   double compute_error(const VectorTools::NormType &norm_type,
-                Function<dim>               &exact_solution) const;
+                       Function<dim>               &exact_solution) const;
 
-  // Compute total energy: E = 0.5 * (v^T M v + u^T A u)
+  /**
+   * Compute total energy: E = 0.5 * (v^T M v + u^T A u)
+   */
   double compute_total_energy() const;
 
 protected:
@@ -317,4 +175,4 @@ protected:
   Vector<double> system_rhs;
 };
 
-#endif // WAVE_HPP
+#endif // WAVE_THETA_SERIAL_HPP
