@@ -1,5 +1,5 @@
 #include "Wave.hpp"
-#include <chrono>
+#include <deal.II/base/timer.h>
 
 using TestCase = WaveEquation::TestCase;
 
@@ -18,14 +18,12 @@ main(int argc, char *argv[])
       const unsigned int mpi_rank = Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
       const unsigned int mpi_size = Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD);
 
-      // Create appropriate exact solution using factory function
+      ConditionalOStream pcout(std::cout, mpi_rank == 0);
+
       auto exact_solution = WaveEquation::create_exact_solution(test_case);
 
-      if (mpi_rank == 0)
-        {
-          WaveEquation::print_test_case_info(test_case);
-          std::cout << std::endl;
-        }
+      WaveEquation::print_test_case_info(test_case, pcout.get_stream());
+      pcout << std::endl;
 
       WaveNewmark problem(/* domain_left = */ -1.0,
                           /* domain_right = */ 1.0,
@@ -37,25 +35,17 @@ main(int argc, char *argv[])
                           /* delta_t = */ 0.01,
                           /* test_case = */ test_case);
 
-      // Synchronize before timing
-      MPI_Barrier(MPI_COMM_WORLD);
-      auto start = std::chrono::high_resolution_clock::now();
+      TimerOutput timer(MPI_COMM_WORLD,
+                        pcout,
+                        TimerOutput::summary,
+                        TimerOutput::wall_times);
 
-      problem.run(exact_solution.get());
+      {
+        TimerOutput::Scope t(timer, "Total simulation");
+        problem.run(exact_solution.get());
+      }
 
-      // Synchronize after computation
-      MPI_Barrier(MPI_COMM_WORLD);
-      auto end = std::chrono::high_resolution_clock::now();
 
-      std::chrono::duration<double> elapsed = end - start;
-
-      if (mpi_rank == 0)
-        {
-          std::cout << "Total execution time: " << elapsed.count() << " seconds"
-                    << std::endl;
-          std::cout << "SCALABILITY_RESULT,newmark," << mpi_size << ","
-                    << elapsed.count() << std::endl;
-        }
     }
   catch (std::exception &exc)
     {
@@ -64,7 +54,6 @@ main(int argc, char *argv[])
                 << std::endl;
       std::cerr << "Exception on processing: " << std::endl
                 << exc.what() << std::endl
-                << "Fix your code please!" << std::endl
                 << "----------------------------------------------------"
                 << std::endl;
       return 1;
@@ -75,7 +64,6 @@ main(int argc, char *argv[])
                 << "----------------------------------------------------"
                 << std::endl;
       std::cerr << "Unknown exception!" << std::endl
-                << "Fix your code please!" << std::endl
                 << "----------------------------------------------------"
                 << std::endl;
       return 1;
