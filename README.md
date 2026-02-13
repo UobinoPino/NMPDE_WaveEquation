@@ -4,7 +4,7 @@ Group information:
 - member-1: Luca, Spreafico, 10660926
 - member-2: Marta, Arzeni, 107 98912
 - member-3: Matilde, Colombo, 107 82110
-- member 4: Roberto Manea, 10813429
+- member-4: Roberto Manea, 10813429
 
 A finite element solver for the 2D wave equation using the [deal.II](https://www.dealii.org/) library. The project implements two time-stepping schemes (**Newmark-β** and **θ-method**) with both serial and MPI-parallel versions.
 
@@ -36,40 +36,40 @@ Both cases use the same initial condition: `u₀ = sin(π(x+1)/2) · sin(π(y+1)
 
 ```
 ├── src/
-│   ├── Newmark/              # Newmark-β method (MPI parallel)
+│   ├── common/
+│   │   └── WaveTestCases.hpp     # Shared test cases, exact solutions, forcing terms
+│   ├── Newmark/                  # Newmark-β method (MPI parallel)
 │   │   ├── Wave.cpp/.hpp
-│   │   └── Wave_Newmark.cpp  # Main driver
+│   │   └── main.cpp
 │   └── Theta_Method/
-│       ├── serial/           # θ-method (sequential)
+│       ├── serial/               # θ-method (sequential)
 │       │   ├── Wave.cpp/.hpp
 │       │   └── main.cpp
-│       └── parallel/         # θ-method (MPI parallel)
+│       └── parallel/             # θ-method (MPI parallel)
 │           ├── WaveParallel.cpp/.hpp
 │           └── main.cpp
-├── plot_energy.py            # Energy evolution plotting
-├── plot_error.py             # Error norms plotting
+├── params_newmark.prm            # Parameter file for Newmark solver
+├── params_theta.prm              # Parameter file for θ-method solvers
+├── src/plot_energy.py            # Energy evolution plotting
+├── src/dispersion.py             # Dispersion analysis plotting
+├── common/cmake-common.cmake
 └── CMakeLists.txt
 ```
 
 ## Time Discretization Methods
 
 ### Newmark-β Method
-A direct second-order formulation that advances displacement, velocity, and acceleration simultaneously:
-- **Parameters**: β = 0.25, γ = 0.5 (average acceleration, unconditionally stable)
-- Solves one linear system per time step
-- Energy-conserving for the chosen parameters
+A direct second-order formulation that advances displacement, velocity, and acceleration simultaneously. It solves one linear system per time step and is energy-conserving for the default parameters (β = 0.25, γ = 0.5).
 
 ### θ-Method
-Reformulates the wave equation as a first-order system in (u, v):
-- **Parameter**: θ = 0.5 (Crank-Nicolson scheme)
-- Solves two linear systems per time step (one for u, one for v)
-- Second-order accurate in time
+Reformulates the wave equation as a first-order system in (u, v). With θ = 0.5 (Crank-Nicolson), the scheme is second-order accurate in time. It solves two linear systems per time step (one for u, one for v).
 
 ## Requirements
 
-- **deal.II** ≥ 9.4 with MPI and Trilinos enabled
-- **CMake** ≥ 3.13
+- **deal.II** ≥ 9.3.1 with MPI and Trilinos enabled
+- **CMake** ≥ 3.12
 - **MPI** implementation (OpenMPI, MPICH, etc.)
+- **Boost** ≥ 1.72
 - **Python 3** with NumPy and Matplotlib (optional, for plotting)
 
 ## Build Instructions
@@ -80,51 +80,78 @@ cmake ..
 make
 ```
 
-This produces three executables:
-- `wave_serial` — Serial θ-method
-- `wave_parallel` — Parallel θ-method
-- `wave_newmark` — Parallel Newmark-β method
+This produces three executables: `Wave_Newmark`, `Wave_Serial`, and `Wave_Parallel`.
 
 ## Running Simulations
 
+All executables accept an optional `.prm` parameter file as their first argument. If no file is provided, built-in defaults are used.
+
 **Serial execution:**
 ```bash
-./wave_serial
+./Wave_Serial                        # uses defaults
+./Wave_Serial ../params_theta.prm    # reads from parameter file
 ```
 
 **Parallel execution (e.g., 4 processes):**
 ```bash
-mpirun -np 4 ./wave_newmark
-mpirun -np 4 ./wave_parallel
+mpirun -np 4 ./Wave_Newmark ../params_newmark.prm
+mpirun -np 4 ./Wave_Parallel ../params_theta.prm
 ```
 
 ## Configuration
 
-To change the test case, edit the main file:
-```cpp
-const Wave::TestCase test_case = Wave::EX1;  // or Wave::EX2
+Simulation parameters are configured through `.prm` files using `dealii::ParameterHandler`. Two example files are provided at the project root.
+
+**`params_newmark.prm`:**
+```
+set Test case    = EX2
+set Refinement   = 7
+set Degree       = 1
+set Final time   = 2.0
+set Time step    = 0.01
+set Beta         = 0.25
+set Gamma        = 0.5
+set Domain left  = -1.0
+set Domain right = 1.0
 ```
 
-### Simulation Parameters
+**`params_theta.prm`** (shared by serial and parallel):
+```
+set Test case    = EX2
+set Refinement   = 7
+set Degree       = 1
+set Final time   = 2.0
+set Time step    = 0.01
+set Theta        = 0.5
+set Domain left  = -1.0
+set Domain right = 1.0
+```
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `degree` | FE polynomial degree | 1 |
-| `T` | Final simulation time | 2.0 |
-| `delta_t` | Time step size | 0.01 |
-| `n_refine` | Mesh refinement level | 7 |
-| `beta` | Newmark parameter β | 0.25 |
-| `gamma` | Newmark parameter γ | 0.5 |
-| `theta` | θ-method parameter | 0.5 |
-| `domain_left/right` | Domain bounds | -1.0 / 1.0 |
+### Parameter Reference
+
+| Parameter | Description | Default | Applies to |
+|-----------|-------------|---------|------------|
+| `Test case` | `EX1` (forced) or `EX2` (free vibration) | `EX2` | All |
+| `Refinement` | Number of global mesh refinements | `7` | All |
+| `Degree` | FE polynomial degree | `1` | All |
+| `Final time` | Simulation end time T | `2.0` | All |
+| `Time step` | Time step size Δt | `0.01` | All |
+| `Beta` | Newmark β parameter | `0.25` | Newmark |
+| `Gamma` | Newmark γ parameter | `0.5` | Newmark |
+| `Theta` | θ-method parameter (0.5 = Crank-Nicolson) | `0.5` | θ-method |
+| `Domain left` | Left boundary of square domain | `-1.0` | All |
+| `Domain right` | Right boundary of square domain | `1.0` | All |
 
 ## Output Files
 
 | File | Content |
 |------|---------|
-| `solution-*.vtu` / `solution.pvtu` | Solution snapshots for ParaView |
-| `errors.csv` | L² and H¹ error norms vs. time |
-| `energy.csv` | Total, kinetic, and potential energy vs. time |
+| `output-newmark-*.vtu` / `.pvtu` | Newmark solution snapshots for ParaView |
+| `solution-*.vtu` / `.pvtu` | θ-method solution snapshots for ParaView |
+| `errors.csv` / `errors_parallel.csv` | L² and H¹ error norms vs. time |
+| `energy.csv` / `energy_parallel.csv` | Total, kinetic, and potential energy vs. time |
+| `center_point_solution.csv` | Newmark solution at (0,0) over time |
+| `center_point_solution_theta.csv` | θ-method solution at (0,0) over time |
 
 ### Energy Computation
 The discrete energy is computed as:
@@ -137,28 +164,31 @@ where M is the mass matrix, A is the stiffness matrix, and (u, v) are the displa
 
 **Plot error evolution:**
 ```bash
-python3 plot_error.py build/errors.csv
+python3 src/dispersion.py center_point_solution.csv
 ```
 
-**Compare energy for different parameters:**
+**Compare solutions across mesh refinements:**
 ```bash
-python3 plot_energy.py energy_0.5_0.25.csv energy_0.6_0.3025.csv
+python3 src/dispersion.py mesh_4.csv mesh_5.csv mesh_6.csv mesh_7.csv
+```
+
+**Compare energy for different Newmark parameters:**
+```bash
+python3 src/plot_energy.py energy_0.5_0.25.csv energy_0.6_0.3025.csv
 ```
 
 **View solution in ParaView:**
-Open the `.pvtu` files to visualize the wave propagation and mesh partitioning.
+Open the `.pvtu` files to visualize wave propagation and mesh partitioning.
 
-## Performance
+## Implementation Details
 
-The parallel implementations use:
-- `parallel::fullydistributed::Triangulation` for mesh distribution
-- Trilinos sparse matrices and vectors
-- CG solver with SSOR preconditioner
+The project uses several deal.II utilities for clean MPI-aware code:
 
-Scalability results are printed in the format:
-```
-SCALABILITY_RESULT,<method>,<nprocs>,<time>
-```
+- **`ConditionalOStream`** for rank-0-only console output without manual rank checks.
+- **`TimerOutput`** for MPI-aggregated wall-time profiling with automatic summary tables.
+- **`ParameterHandler`** for runtime configuration via `.prm` files with built-in validation.
+
+The parallel implementations use `parallel::fullydistributed::Triangulation` for mesh distribution, Trilinos sparse matrices and vectors, and CG solvers with identity or SSOR preconditioners.
 
 ## References
 
