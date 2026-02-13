@@ -200,7 +200,7 @@ void WaveThetaSerial::run(Function<dim> *exact_solution)
   Vector<double> forcing_terms(solution_u.size());
 
   // Create appropriate forcing function using factory
-  std::unique_ptr<Function<dim>> rhs_function =
+  const auto rhs_function =
     WaveEquation::create_forcing_term(test_case);
 
   std::cout << std::endl;

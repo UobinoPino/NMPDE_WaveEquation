@@ -259,7 +259,7 @@ WaveThetaParallel::assemble_forcing_terms()
   std::vector<types::global_dof_index> dof_indices(dofs_per_cell);
 
   // Create appropriate forcing function using factory
-  std::unique_ptr<Function<dim>> rhs_function =
+  const auto rhs_function =
     WaveEquation::create_forcing_term(test_case);
 
   // First compute theta * f^n
@@ -517,7 +517,7 @@ WaveThetaParallel::output_results() const
   exact_solution_vec.reinit(locally_owned_dofs, locally_relevant_dofs, MPI_COMM_WORLD);
 
   // Choose the appropriate exact solution using factory
-  auto exact_func = WaveEquation::create_exact_solution(test_case);
+  const auto exact_func = WaveEquation::create_exact_solution(test_case);
   exact_func->set_time(time);
   VectorTools::interpolate(dof_handler, *exact_func, exact_owned);
   exact_solution_vec = exact_owned;
@@ -643,7 +643,7 @@ WaveThetaParallel::run(Function<dim> *exact_solution)
   // Record initial condition at center point (t=0).
   solution_u     = old_solution_u;
   solution_v     = old_solution_v;
-  double saved_time = time;
+  const double saved_time = time;
   time              = 0.0;
   record_center_point_value();
   time = saved_time;

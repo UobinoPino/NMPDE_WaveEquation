@@ -108,7 +108,7 @@ main(int argc, char *argv[])
             << ", gamma=" << gamma
             << std::endl << std::endl;
 
-      auto exact_solution = WaveEquation::create_exact_solution(test_case);
+      const auto exact_solution = WaveEquation::create_exact_solution(test_case);
 
       WaveNewmark problem(domain_left,
                           domain_right,

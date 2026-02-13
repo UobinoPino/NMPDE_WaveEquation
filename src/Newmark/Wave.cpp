@@ -192,7 +192,7 @@ WaveNewmark::assemble()
   std::vector<double>         a_old_values(n_q);
 
   // Create forcing term using factory function
-  std::unique_ptr<Function<dim>> rhs_function =
+  const auto rhs_function =
     WaveEquation::create_forcing_term(test_case);
   rhs_function->set_time(time);
 
@@ -360,7 +360,7 @@ WaveNewmark::run(Function<dim> *exact_solution)
     velocity = velocity_owned;
 
     // Use factory function for initial acceleration
-    auto initial_accel = WaveEquation::create_initial_acceleration(test_case);
+    const auto initial_accel = WaveEquation::create_initial_acceleration(test_case);
     VectorTools::interpolate(dof_handler, *initial_accel, acceleration_owned);
     acceleration = acceleration_owned;
 
@@ -384,9 +384,9 @@ WaveNewmark::run(Function<dim> *exact_solution)
             << time << " : ";
 
       // Save old OWNED values BEFORE assemble (needed for Newmark update)
-      TrilinosWrappers::MPI::Vector u_old(solution_owned);
-      TrilinosWrappers::MPI::Vector v_old(velocity_owned);
-      TrilinosWrappers::MPI::Vector a_old(acceleration_owned);
+      const TrilinosWrappers::MPI::Vector u_old(solution_owned);
+      const TrilinosWrappers::MPI::Vector v_old(velocity_owned);
+      const TrilinosWrappers::MPI::Vector a_old(acceleration_owned);
 
       assemble();
       solve_linear_system();
@@ -414,7 +414,7 @@ WaveNewmark::run(Function<dim> *exact_solution)
       acceleration = acceleration_owned;
 
       // Compute errors at current time
-      int error_interval = 10;
+      const int error_interval = 10;
       if (exact_solution != nullptr && timestep_number % error_interval == 0)
         {
           const double error_L2 =
