@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 
 using namespace dealii;
 
@@ -50,6 +51,29 @@ enum class TestCase
   EX1 = 1,  // Forced vibration with cos(t)
   EX2 = 2   // Free vibration (homogeneous) with cos(π/√2 · t)
 };
+
+/**
+ * Returns the test case name as a string.
+ */
+inline std::string test_case_name(TestCase test_case)
+{
+  return (test_case == TestCase::EX1) ? "EX1" : "EX2";
+}
+
+/**
+ * Parses a test case from a string ("EX1" or "EX2").
+ * Throws std::runtime_error if the string is not recognized.
+ */
+inline TestCase parse_test_case(const std::string &name)
+{
+  if (name == "EX1")
+    return TestCase::EX1;
+  else if (name == "EX2")
+    return TestCase::EX2;
+  else
+    throw std::runtime_error("Unknown test case: '" + name +
+                             "'. Valid options are: EX1, EX2");
+}
 
 // ============================================================================
 // Spatial Mode Function (common to all test cases)
@@ -333,22 +357,14 @@ inline void print_test_case_info(TestCase test_case, std::ostream &out = std::co
 {
   if (test_case == TestCase::EX1)
     {
-      out << "Running EX1: u(x,y,t) = sin(π(x+1)/2) · sin(π(y+1)/2) · cos(t)\n"
-          << "             f = (π²/2 - 1) · φ(x,y) · cos(t)\n";
+      out << "Running EX1: u(x,y,t) = sin(pi(x+1)/2) * sin(pi(y+1)/2) * cos(t)\n"
+          << "             f = (pi^2/2 - 1) * phi(x,y) * cos(t)\n";
     }
   else
     {
-      out << "Running EX2: u(x,y,t) = sin(π(x+1)/2) · sin(π(y+1)/2) · cos(π/√2 · t)\n"
+      out << "Running EX2: u(x,y,t) = sin(pi(x+1)/2) * sin(pi(y+1)/2) * cos(pi/sqrt(2) * t)\n"
           << "             f = 0 (homogeneous)\n";
     }
-}
-
-/**
- * Returns the test case name as a string.
- */
-inline std::string test_case_name(TestCase test_case)
-{
-  return (test_case == TestCase::EX1) ? "EX1" : "EX2";
 }
 
 } // namespace WaveEquation
