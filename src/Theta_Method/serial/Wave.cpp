@@ -185,10 +185,12 @@ void WaveThetaSerial::run(Function<dim> *exact_solution)
   energy_file << "time,total_energy,kinetic_energy,potential_energy\n";
 
   // Project initial conditions using common classes.
+  // Use factory function to get correct initial displacement for the test case
+  const auto initial_displacement = WaveEquation::create_initial_displacement(test_case);
   VectorTools::project(dof_handler,
                        constraints,
                        QGauss<dim>(fe.degree + 1),
-                       WaveEquation::InitialDisplacement(),
+                       *initial_displacement,
                        old_solution_u);
   VectorTools::project(dof_handler,
                        constraints,

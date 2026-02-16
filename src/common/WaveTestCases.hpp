@@ -34,6 +34,9 @@ using namespace dealii;
  *
  *   EX2: u(x,y,t) = sin(π(x+1)/2) · sin(π(y+1)/2) · cos(π/√2 · t)
  *        f = 0 (homogeneous)
+ *
+ * EX3: u(x,y,t) = ? non nota
+
  */
 
 
@@ -49,7 +52,8 @@ static constexpr unsigned int dim = 2;
 enum class TestCase
 {
   EX1 = 1,  // Forced vibration with cos(t)
-  EX2 = 2   // Free vibration (homogeneous) with cos(π/√2 · t)
+  EX2 = 2,  // Free vibration (homogeneous) with cos(π/√2 · t)
+  EX3 = 3   // Non-homogeneous with unknown solution AAAAAAAAAAAAAAAAAAAA
 };
 
 /**
@@ -57,11 +61,13 @@ enum class TestCase
  */
 inline std::string test_case_name(TestCase test_case)
 {
-  return (test_case == TestCase::EX1) ? "EX1" : "EX2";
+  return (test_case == TestCase::EX1) ? "EX1" :
+         (test_case == TestCase::EX2) ? "EX2" :
+         (test_case == TestCase::EX3) ? "EX3" : "Unknown"; // AAAAAAAAAAAAAAAAAAAAA
 }
 
 /**
- * Parses a test case from a string ("EX1" or "EX2").
+ * Parses a test case from a string ("EX1" or "EX2" or "EX3").
  * Throws std::runtime_error if the string is not recognized.
  */
 inline TestCase parse_test_case(const std::string &name)
@@ -70,9 +76,11 @@ inline TestCase parse_test_case(const std::string &name)
     return TestCase::EX1;
   else if (name == "EX2")
     return TestCase::EX2;
+  else if (name == "EX3")
+    return TestCase::EX3; // AAAAAAAAAAAAAAAAAAAAA
   else
     throw std::runtime_error("Unknown test case: '" + name +
-                             "'. Valid options are: EX1, EX2");
+                             "'. Valid options are: EX1, EX2, EX3.");
 }
 
 // ============================================================================
@@ -133,8 +141,25 @@ public:
 };
 
 /**
+* Initial displacement for EX3: u₀(x,y) = 0
+* AAAAAAAAAAAAAAAAAAAA
+*/
+class InitialDisplacementEX3 : public Function<dim>
+{
+public:  InitialDisplacementEX3() = default;
+
+  virtual double value(const Point<dim> &p,
+        const unsigned int component = 0) const override
+  {
+    (void)component;
+    Assert(component == 0, ExcIndexRange(component, 0, 1));
+    return 0.0;
+  }
+};
+
+/**
  * Initial velocity: v₀(x,y) = 0
- * Common to both EX1 and EX2 (since d/dt[cos(ωt)]|_{t=0} = 0 for any ω).
+ * Common to both EX1 and EX2 (since d/dt[cos(ωt)]|_{t=0} = 0 for any ω), and EX3.
  */
 class InitialVelocity : public Function<dim>
 {
@@ -183,6 +208,24 @@ public:
     (void)component;
     Assert(component == 0, ExcIndexRange(component, 0, 1));
     return -(numbers::PI * numbers::PI * 0.5) * spatial_mode(p);
+  }
+};
+
+/**
+ * Initial acceleration for EX3: a₀(x,y) = 0
+ * AAAAAAAAAAAAAAAAAAAA
+ */
+class InitialAccelerationEX3 : public Function<dim>
+{
+public:
+  InitialAccelerationEX3() = default;
+
+  virtual double value(const Point<dim> &p,
+        const unsigned int component = 0) const override
+  {
+    (void)component;
+    Assert(component == 0, ExcIndexRange(component, 0, 1));
+    return 0.0;
   }
 };
 
@@ -249,6 +292,45 @@ public:
   }
 };
 
+/**
+ * Forcing term for EX3: f(x,y,t) = (200(t−0.5)² − 1) exp(−100(t−0.5)²)δ(x)
+ * AAAAAAAAAAAAAAAAAAAA
+ */
+class ForcingTermEX3 : public Function<dim>
+{
+public:
+  ForcingTermEX3() = default;
+
+  virtual double value(const Point<dim> &p,
+        const unsigned int component = 0) const override
+  {
+    Assert(component == 0, ExcIndexRange(component, 0, 1));
+
+    const double t = this->get_time();
+
+    // centro della sorgente
+    const double x0 = 0.0;
+    const double y0 = 0.0;
+
+    // larghezza spaziale
+    const double sigma = 0.1;
+
+    const double r2 = (p[0]-x0)*(p[0]-x0) + (p[1]-y0)*(p[1]-y0);
+
+    // impulso temporale
+    const double g_t =
+      (200.0 * (t - 0.5)*(t - 0.5) - 1.0) *
+      std::exp(-100.0 * (t - 0.5)*(t - 0.5));
+
+    // gaussiana spaziale (approx delta)
+    const double g_x =
+      std::exp(-r2/(sigma*sigma));
+
+    return g_t * g_x;
+  }
+};
+
+
 // ============================================================================
 // Exact Solutions
 // ============================================================================
@@ -312,6 +394,11 @@ public:
   }
 };
 
+/**
+ * Exact solution for EX3: u(x,y,t) = ? non nota
+ * AAAAAAAAAAAAAAAAAAAA
+ */
+
 // ============================================================================
 // Factory Functions
 // ============================================================================
@@ -323,8 +410,21 @@ inline std::unique_ptr<Function<dim>> create_exact_solution(TestCase test_case)
 {
   if (test_case == TestCase::EX1)
     return std::make_unique<ExactSolutionEX1>();
-  else
+  else if (test_case == TestCase::EX2)
     return std::make_unique<ExactSolutionEX2>();
+  else
+    return nullptr; // No exact solution for EX3 AAAAAAAAAAAAAAAAAAAA
+}
+
+/**
+ * Creates the appropriate initial displacement for the given test case.
+ */
+inline std::unique_ptr<Function<dim>> create_initial_displacement(TestCase test_case)
+{
+  if (test_case == TestCase::EX1 || test_case == TestCase::EX2)
+    return std::make_unique<InitialDisplacement>();
+  else
+    return std::make_unique<InitialDisplacementEX3>(); // EX3: zero initial displacement
 }
 
 /**
@@ -334,8 +434,10 @@ inline std::unique_ptr<Function<dim>> create_forcing_term(TestCase test_case)
 {
   if (test_case == TestCase::EX1)
     return std::make_unique<ForcingTermEX1>();
-  else
+  else if (test_case == TestCase::EX2)
     return std::make_unique<ForcingTermEX2>();
+  else
+    return std::make_unique<ForcingTermEX3>(); // AAAAAAAAAAAAAAAAAAAA
 }
 
 /**
@@ -346,8 +448,10 @@ inline std::unique_ptr<Function<dim>> create_initial_acceleration(TestCase test_
 {
   if (test_case == TestCase::EX1)
     return std::make_unique<InitialAccelerationEX1>();
-  else
+  else if (test_case == TestCase::EX2)
     return std::make_unique<InitialAccelerationEX2>();
+  else
+    return std::make_unique<InitialAccelerationEX3>(); // AAAAAAAAAAAAAAAAAAAA
 }
 
 /**
@@ -360,10 +464,15 @@ inline void print_test_case_info(TestCase test_case, std::ostream &out = std::co
       out << "Running EX1: u(x,y,t) = sin(pi(x+1)/2) * sin(pi(y+1)/2) * cos(t)\n"
           << "             f = (pi^2/2 - 1) * phi(x,y) * cos(t)\n";
     }
-  else
+  else if (test_case == TestCase::EX2)
     {
       out << "Running EX2: u(x,y,t) = sin(pi(x+1)/2) * sin(pi(y+1)/2) * cos(pi/sqrt(2) * t)\n"
           << "             f = 0 (homogeneous)\n";
+    }
+  else
+    {
+      out << "Running EX3: u(x,y,t) = ? non nota\n"
+          << "             f = (200(t−0.5)² − 1) exp(−100(t−0.5)²)δ(x)\n";
     }
 }
 

@@ -630,8 +630,10 @@ WaveThetaParallel::run(Function<dim> *exact_solution)
   // Project initial conditions using common classes.
   pcout << "Projecting initial conditions" << std::endl;
 
+  // Use factory function to get correct initial displacement for the test case
+  const auto initial_displacement = WaveEquation::create_initial_displacement(test_case);
   VectorTools::interpolate(dof_handler,
-                           WaveEquation::InitialDisplacement(),
+                           *initial_displacement,
                            old_solution_u_owned);
   old_solution_u = old_solution_u_owned;
 

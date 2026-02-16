@@ -348,9 +348,10 @@ WaveNewmark::run(Function<dim> *exact_solution)
     setup();
     find_center_point_dof();
 
-    // Use common initial condition classes
+    // Use factory function for initial displacement based on test case
+    const auto initial_displacement = WaveEquation::create_initial_displacement(test_case);
     VectorTools::interpolate(dof_handler,
-                             WaveEquation::InitialDisplacement(),
+                             *initial_displacement,
                              solution_owned);
     solution = solution_owned;
 
