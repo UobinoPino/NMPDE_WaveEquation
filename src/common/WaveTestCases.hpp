@@ -21,7 +21,7 @@ using namespace dealii;
  * the Newmark and Theta-method solvers.
  *
  * Mathematical Problem:
- *   ∂²u/∂t² = Δu + f(x,y,t)    in Ω × (0, T]
+ *   ∂²u/∂t² + Δu = f(x,y,t)    in Ω × (0, T]
  *   u = 0                       on ∂Ω (Dirichlet BC)
  *   u(x,y,0) = u₀(x,y)         (initial displacement)
  *   ∂u/∂t(x,y,0) = v₀(x,y)     (initial velocity)
@@ -293,8 +293,8 @@ public:
 };
 
 /**
- * Forcing term for EX3: f(x,y,t) = (200(t−0.5)² − 1) exp(−100(t−0.5)²)δ(x)
- * AAAAAAAAAAAAAAAAAAAA
+ * Forcing term for EX3: f(x,y,t) = A * (200(t−0.5)² − 1) exp(−100(t−0.5)²)δ(x)
+ * where A is an amplitude factor to make the solution more visible.
  */
 class ForcingTermEX3 : public Function<dim>
 {
@@ -312,8 +312,11 @@ public:
     const double x0 = 0.0;
     const double y0 = 0.0;
 
-    // larghezza spaziale
+    // larghezza spaziale (più grande = sorgente più larga)
     const double sigma = 0.1;
+
+    // fattore di amplificazione per rendere la soluzione più visibile
+    const double amplitude = 50.0;
 
     const double r2 = (p[0]-x0)*(p[0]-x0) + (p[1]-y0)*(p[1]-y0);
 
@@ -326,7 +329,7 @@ public:
     const double g_x =
       std::exp(-r2/(sigma*sigma));
 
-    return g_t * g_x;
+    return amplitude * g_t * g_x;
   }
 };
 
