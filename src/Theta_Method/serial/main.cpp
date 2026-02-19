@@ -17,8 +17,8 @@ main(int argc, char *argv[])
 
       prm.declare_entry("Test case",
                          "EX2",
-                         Patterns::Selection("EX1|EX2|EX3"),
-                         "Test case selector: EX1 (forced) or EX2 (free) or EX3 (non-homogeneous)");
+                         Patterns::Selection("EX1|EX2|EX3|EX4"),
+                         "Test case selector: EX1 (forced) or EX2 (free) or EX3 (non-homogeneous) or EX4 (square wave)");
 
       prm.declare_entry("Refinement",
                          "7",

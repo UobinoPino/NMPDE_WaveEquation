@@ -35,7 +35,9 @@ using namespace dealii;
  *   EX2: u(x,y,t) = sin(π(x+1)/2) · sin(π(y+1)/2) · cos(π/√2 · t)
  *        f = 0 (homogeneous)
  *
- * EX3: u(x,y,t) = ? non nota
+ *   EX3: Onda circolare (spherical wave)
+ *
+ *   EX4: Onda quadra
 
  */
 
@@ -53,7 +55,8 @@ enum class TestCase
 {
   EX1 = 1,  // Forced vibration with cos(t)
   EX2 = 2,  // Free vibration (homogeneous) with cos(π/√2 · t)
-  EX3 = 3   // Non-homogeneous with unknown solution AAAAAAAAAAAAAAAAAAAA
+  EX3 = 3,  // Non-homogeneous with unknown solution
+  EX4 = 4   // Square wave
 };
 
 /**
@@ -63,11 +66,13 @@ inline std::string test_case_name(TestCase test_case)
 {
   return (test_case == TestCase::EX1) ? "EX1" :
          (test_case == TestCase::EX2) ? "EX2" :
-         (test_case == TestCase::EX3) ? "EX3" : "Unknown"; // AAAAAAAAAAAAAAAAAAAAA
+         (test_case == TestCase::EX3) ? "EX3" :
+         (test_case == TestCase::EX4) ? "EX4" :
+         "Unknown";
 }
 
 /**
- * Parses a test case from a string ("EX1" or "EX2" or "EX3").
+ * Parses a test case from a string ("EX1" or "EX2" or "EX3" or "EX4").
  * Throws std::runtime_error if the string is not recognized.
  */
 inline TestCase parse_test_case(const std::string &name)
@@ -77,10 +82,12 @@ inline TestCase parse_test_case(const std::string &name)
   else if (name == "EX2")
     return TestCase::EX2;
   else if (name == "EX3")
-    return TestCase::EX3; // AAAAAAAAAAAAAAAAAAAAA
+    return TestCase::EX3;
+  else if (name == "EX4")
+    return TestCase::EX4;
   else
     throw std::runtime_error("Unknown test case: '" + name +
-                             "'. Valid options are: EX1, EX2, EX3.");
+                             "'. Valid options are: EX1, EX2, EX3, EX4.");
 }
 
 // ============================================================================
@@ -142,13 +149,13 @@ public:
 
 /**
 * Initial displacement for EX3: u₀(x,y) = 0
-* AAAAAAAAAAAAAAAAAAAA
-*/
+**/
+
 class InitialDisplacementEX3 : public Function<dim>
 {
 public:  InitialDisplacementEX3() = default;
 
-  virtual double value(const Point<dim> &p,
+  virtual double value(const Point<dim> &/*p*/,
         const unsigned int component = 0) const override
   {
     (void)component;
@@ -158,8 +165,31 @@ public:  InitialDisplacementEX3() = default;
 };
 
 /**
+ * Initial displacement for EX4: u₀(x,y) = u(x,y,0)=A⋅sign(sin(nπx)⋅sin(nπy))
+ */
+class InitialDisplacementEX4 : public Function<dim>
+{
+public:
+  InitialDisplacementEX4() = default;
+
+  // Amplitude factor
+  static constexpr double A = 0.5;
+  // Number of oscillations in each direction (must be odd to satisfy BCs)
+  static constexpr unsigned int n = 5;
+
+  virtual double value(const Point<dim> &p,
+        const unsigned int component = 0) const override
+  {
+    (void)component;
+    Assert(component == 0, ExcIndexRange(component, 0, 1));
+    return A * std::signbit(std::sin(numbers::PI * n * p[0]) *
+                            std::sin(numbers::PI * n * p[1]));
+  }
+};
+
+/**
  * Initial velocity: v₀(x,y) = 0
- * Common to both EX1 and EX2 (since d/dt[cos(ωt)]|_{t=0} = 0 for any ω), and EX3.
+ * Common to both EX1 and EX2 (since d/dt[cos(ωt)]|_{t=0} = 0 for any ω), and EX3 and EX4.
  */
 class InitialVelocity : public Function<dim>
 {
@@ -212,15 +242,14 @@ public:
 };
 
 /**
- * Initial acceleration for EX3: a₀(x,y) = 0
- * AAAAAAAAAAAAAAAAAAAA
+ * Initial acceleration for EX3 and EX4: a₀(x,y) = 0
  */
-class InitialAccelerationEX3 : public Function<dim>
+class InitialAccelerationHomogeneous : public Function<dim>
 {
 public:
-  InitialAccelerationEX3() = default;
+  InitialAccelerationHomogeneous() = default;
 
-  virtual double value(const Point<dim> &p,
+  virtual double value(const Point<dim> &/*p*/,
         const unsigned int component = 0) const override
   {
     (void)component;
@@ -276,12 +305,12 @@ public:
 };
 
 /**
- * Forcing term for EX2: f(x,y,t) = 0 (homogeneous wave equation)
+ * Forcing term for EX2 and EX4: f(x,y,t) = 0 (homogeneous wave equation)
  */
-class ForcingTermEX2 : public Function<dim>
+class ForcingTermHomogeneous : public Function<dim>
 {
 public:
-  ForcingTermEX2() = default;
+  ForcingTermHomogeneous() = default;
 
   virtual double value(const Point<dim> & /*p*/,
         const unsigned int component = 0) const override
@@ -304,6 +333,7 @@ public:
   virtual double value(const Point<dim> &p,
         const unsigned int component = 0) const override
   {
+    (void)component;
     Assert(component == 0, ExcIndexRange(component, 0, 1));
 
     const double t = this->get_time();
@@ -398,9 +428,8 @@ public:
 };
 
 /**
- * Exact solution for EX3: u(x,y,t) = ? non nota
- * AAAAAAAAAAAAAAAAAAAA
- */
+ * Exact solution for EX3 and EX4: u(x,y,t) = ? unknown
+ **/
 
 // ============================================================================
 // Factory Functions
@@ -416,7 +445,7 @@ inline std::unique_ptr<Function<dim>> create_exact_solution(TestCase test_case)
   else if (test_case == TestCase::EX2)
     return std::make_unique<ExactSolutionEX2>();
   else
-    return nullptr; // No exact solution for EX3 AAAAAAAAAAAAAAAAAAAA
+    return nullptr; // No exact solution for EX3 nor EX4
 }
 
 /**
@@ -426,8 +455,10 @@ inline std::unique_ptr<Function<dim>> create_initial_displacement(TestCase test_
 {
   if (test_case == TestCase::EX1 || test_case == TestCase::EX2)
     return std::make_unique<InitialDisplacement>();
-  else
+  else if (test_case == TestCase::EX3)
     return std::make_unique<InitialDisplacementEX3>(); // EX3: zero initial displacement
+  else // EX4
+    return std::make_unique<InitialDisplacementEX4>();
 }
 
 /**
@@ -437,10 +468,11 @@ inline std::unique_ptr<Function<dim>> create_forcing_term(TestCase test_case)
 {
   if (test_case == TestCase::EX1)
     return std::make_unique<ForcingTermEX1>();
-  else if (test_case == TestCase::EX2)
-    return std::make_unique<ForcingTermEX2>();
-  else
-    return std::make_unique<ForcingTermEX3>(); // AAAAAAAAAAAAAAAAAAAA
+  else if (test_case == TestCase::EX3)
+    return std::make_unique<ForcingTermEX3>();
+  else 
+    return std::make_unique<ForcingTermHomogeneous>();
+
 }
 
 /**
@@ -453,8 +485,8 @@ inline std::unique_ptr<Function<dim>> create_initial_acceleration(TestCase test_
     return std::make_unique<InitialAccelerationEX1>();
   else if (test_case == TestCase::EX2)
     return std::make_unique<InitialAccelerationEX2>();
-  else
-    return std::make_unique<InitialAccelerationEX3>(); // AAAAAAAAAAAAAAAAAAAA
+  else 
+    return std::make_unique<InitialAccelerationHomogeneous>();
 }
 
 /**
@@ -472,10 +504,15 @@ inline void print_test_case_info(TestCase test_case, std::ostream &out = std::co
       out << "Running EX2: u(x,y,t) = sin(pi(x+1)/2) * sin(pi(y+1)/2) * cos(pi/sqrt(2) * t)\n"
           << "             f = 0 (homogeneous)\n";
     }
+  else if (test_case == TestCase::EX3)
+    {
+      out << "Running EX3: u(x,y,t) = unknown\n"
+          << "             f = (200(t−0.5)² − 1) exp(−100(t−0.5)²)δ(x)\n";
+    }
   else
     {
-      out << "Running EX3: u(x,y,t) = ? non nota\n"
-          << "             f = (200(t−0.5)² − 1) exp(−100(t−0.5)²)δ(x)\n";
+      out << "Running EX4: u(x,y,t) = square wave\n"
+          << "             f = 0 (homogeneous)\n";
     }
 }
 
