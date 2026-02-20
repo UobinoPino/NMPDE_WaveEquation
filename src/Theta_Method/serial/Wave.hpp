@@ -173,6 +173,23 @@ protected:
 
   // System right-hand side.
   Vector<double> system_rhs;
+
+  // ----- Dispersion analysis: center point tracking -----
+
+  // File stream for center point time series.
+  std::ofstream center_point_file;
+
+  // DoF index corresponding to the center point (0,0).
+  types::global_dof_index center_dof_index;
+
+  // Flag indicating if center point was found.
+  bool center_point_found;
+
+  // Find the DoF closest to the center point.
+  void find_center_point_dof();
+
+  // Record solution value at center point.
+  void record_center_point_value();
 };
 
 #endif // WAVE_THETA_SERIAL_HPP

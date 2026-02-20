@@ -21,7 +21,7 @@ using namespace dealii;
  * the Newmark and Theta-method solvers.
  *
  * Mathematical Problem:
- *   ∂²u/∂t² + Δu = f(x,y,t)    in Ω × (0, T]
+ *   ∂²u/∂t² - Δu = f(x,y,t)    in Ω × (0, T]
  *   u = 0                       on ∂Ω (Dirichlet BC)
  *   u(x,y,0) = u₀(x,y)         (initial displacement)
  *   ∂u/∂t(x,y,0) = v₀(x,y)     (initial velocity)
@@ -164,26 +164,26 @@ public:  InitialDisplacementEX3() = default;
   }
 };
 
-/**
- * Initial displacement for EX4: u₀(x,y) = u(x,y,0)=A⋅sign(sin(nπx)⋅sin(nπy))
- */
+// Initial displacement for EX4: u₀(x,y) = A in a central square region, 0 elsewhere
 class InitialDisplacementEX4 : public Function<dim>
 {
 public:
   InitialDisplacementEX4() = default;
 
-  // Amplitude factor
   static constexpr double A = 0.5;
-  // Number of oscillations in each direction (must be odd to satisfy BCs)
-  static constexpr unsigned int n = 5;
 
   virtual double value(const Point<dim> &p,
         const unsigned int component = 0) const override
   {
     (void)component;
     Assert(component == 0, ExcIndexRange(component, 0, 1));
-    return A * std::signbit(std::sin(numbers::PI * n * p[0]) *
-                            std::sin(numbers::PI * n * p[1]));
+    
+    // Definisce un quadrato centrale largo 1 (da -0.5 a 0.5)
+    if (std::abs(p[0]) < 0.5 && std::abs(p[1]) < 0.5) {
+        return A;
+    } else {
+        return 0.0; 
+    }
   }
 };
 

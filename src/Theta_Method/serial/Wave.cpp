@@ -1,5 +1,8 @@
 #include "Wave.hpp"
 
+#include <iomanip>
+#include <limits>
+
 WaveThetaSerial::WaveThetaSerial(const unsigned int degree_,
                                  const double       T_,
                                  const double       theta_,
@@ -77,6 +80,9 @@ void WaveThetaSerial::setup_system()
   }
 
   constraints.close();
+
+  // Find center point for dispersion analysis.
+  find_center_point_dof();
 
   std::cout << "===============================================" << std::endl;
 }
@@ -167,6 +173,66 @@ double WaveThetaSerial::compute_total_energy() const
   return kinetic_energy + potential_energy;
 }
 
+void WaveThetaSerial::find_center_point_dof()
+{
+  const Point<dim> center_point(0.0, 0.0);
+
+  center_point_found = false;
+  center_dof_index   = numbers::invalid_dof_index;
+
+  for (const auto &cell : dof_handler.active_cell_iterators())
+    {
+      const Point<dim> cell_center   = cell->center();
+      const double     cell_diameter = cell->diameter();
+
+      if (center_point.distance(cell_center) < cell_diameter)
+        {
+          std::vector<types::global_dof_index> local_dof_indices(fe.dofs_per_cell);
+          cell->get_dof_indices(local_dof_indices);
+
+          double min_distance = std::numeric_limits<double>::max();
+
+          for (unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell; ++v)
+            {
+              const Point<dim> vertex   = cell->vertex(v);
+              const double     distance = center_point.distance(vertex);
+
+              if (distance < min_distance)
+                {
+                  min_distance     = distance;
+                  center_dof_index = local_dof_indices[v];
+                }
+            }
+
+          if (min_distance < 1e-10)
+            {
+              center_point_found = true;
+              std::cout << "Center point DoF found: index = " << center_dof_index
+                        << ", distance from (0,0) = " << min_distance << std::endl;
+              break;
+            }
+        }
+    }
+
+  if (center_point_found)
+    {
+      center_point_file.open("center_point_solution.csv");
+      center_point_file << "time,solution,velocity\n";
+      center_point_file << std::setprecision(12);
+    }
+}
+
+void WaveThetaSerial::record_center_point_value()
+{
+  if (!center_point_found)
+    return;
+
+  const double u_center = solution_u[center_dof_index];
+  const double v_center = solution_v[center_dof_index];
+
+  center_point_file << time << "," << u_center << "," << v_center << "\n";
+}
+
 void WaveThetaSerial::run(Function<dim> *exact_solution)
 {
   setup_system();
@@ -204,6 +270,16 @@ void WaveThetaSerial::run(Function<dim> *exact_solution)
   // Create appropriate forcing function using factory
   const auto rhs_function =
     WaveEquation::create_forcing_term(test_case);
+
+  // Record initial values at center point (time = 0).
+  // Note: At this point, solution_u and solution_v are not yet set,
+  // so we use old_solution_u and old_solution_v which hold initial conditions.
+  if (center_point_found)
+    {
+      const double u_center = old_solution_u[center_dof_index];
+      const double v_center = old_solution_v[center_dof_index];
+      center_point_file << 0.0 << "," << u_center << "," << v_center << "\n";
+    }
 
   std::cout << std::endl;
   std::cout << "Starting time-stepping loop..." << std::endl;
@@ -297,6 +373,9 @@ void WaveThetaSerial::run(Function<dim> *exact_solution)
 
       solve_v();
 
+      // Record center point value for dispersion analysis.
+      record_center_point_value();
+
       output_results();
 
       // Compute and output energy.
@@ -339,6 +418,8 @@ void WaveThetaSerial::run(Function<dim> *exact_solution)
     error_file.close();
   if (energy_file.is_open())
     energy_file.close();
+  if (center_point_file.is_open())
+    center_point_file.close();
 
   std::cout << "-----------------------------------------------" << std::endl;
   std::cout << "Simulation complete." << std::endl;
