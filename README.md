@@ -23,14 +23,18 @@ The spatial discretization uses Q1 (bilinear) finite elements on a structured qu
 
 ### Test Cases
 
-Two manufactured solutions are provided to verify convergence:
+Four test cases are provided, two with manufactured solutions for convergence verification and two for qualitative wave propagation studies:
 
-| Case | Exact Solution | Forcing Term | Description |
-|------|----------------|--------------|-------------|
-| **EX1** | `sin(π(x+1)/2) · sin(π(y+1)/2) · cos(t)` | `(π²/2 - 1) · φ(x,y) · cos(t)` | Forced vibration |
-| **EX2** | `sin(π(x+1)/2) · sin(π(y+1)/2) · cos(π/√2 · t)` | `0` | Free vibration (homogeneous) |
+| Case | Exact Solution | Forcing Term | Initial Displacement | Description |
+|------|----------------|--------------|----------------------|-------------|
+| **EX1** | `sin(π(x+1)/2) · sin(π(y+1)/2) · cos(t)` | `(π²/2 - 1) · φ(x,y) · cos(t)` | `φ(x,y)` | Forced vibration |
+| **EX2** | `sin(π(x+1)/2) · sin(π(y+1)/2) · cos(π/√2 · t)` | `0` | `φ(x,y)` | Free vibration (homogeneous) |
+| **EX3** | Unknown | `A · (200(t−0.5)² − 1) · exp(−100(t−0.5)²) · exp(−r²/σ²)` | `0` | Circular wave from point source |
+| **EX4** | Unknown | `0` | `0.5` in `[-0.5,0.5]²`, `0` elsewhere | Square wave propagation |
 
-Both cases use the same initial condition: `u₀ = sin(π(x+1)/2) · sin(π(y+1)/2)` and `v₀ = 0`.
+Where `φ(x,y) = sin(π(x+1)/2) · sin(π(y+1)/2)`.
+
+EX1 and EX2 share the same initial displacement `u₀ = φ(x,y)` and `v₀ = 0`. EX3 starts from rest (`u₀ = 0`, `v₀ = 0`) and is driven by a spatially localized Gaussian pulse centered at the origin. EX4 starts from a discontinuous square pulse (`v₀ = 0`) and evolves with no forcing.
 
 ## Project Structure
 
@@ -50,7 +54,8 @@ Both cases use the same initial condition: `u₀ = sin(π(x+1)/2) · sin(π(y+1)
 │           └── main.cpp
 ├── params_newmark.prm            # Parameter file for Newmark solver
 ├── params_theta.prm              # Parameter file for θ-method solvers
-├── src/plot_energy.py            # Energy evolution plotting
+├── src/plot_energy.py            # Energy evolution plotting (parameter sweep)
+├── src/energy_plot_mesh.py       # Energy evolution plotting (mesh/dt comparison)
 ├── src/dispersion.py             # Dispersion analysis plotting
 ├── common/cmake-common.cmake
 └── CMakeLists.txt
@@ -131,7 +136,7 @@ set Domain right = 1.0
 
 | Parameter | Description | Default | Applies to |
 |-----------|-------------|---------|------------|
-| `Test case` | `EX1` (forced) or `EX2` (free vibration) | `EX2` | All |
+| `Test case` | `EX1` (forced), `EX2` (free), `EX3` (circular wave), or `EX4` (square wave) | `EX2` | All |
 | `Refinement` | Number of global mesh refinements | `7` | All |
 | `Degree` | FE polynomial degree | `1` | All |
 | `Final time` | Simulation end time T | `2.0` | All |
@@ -148,10 +153,12 @@ set Domain right = 1.0
 |------|---------|
 | `output-newmark-*.vtu` / `.pvtu` | Newmark solution snapshots for ParaView |
 | `solution-*.vtu` / `.pvtu` | θ-method solution snapshots for ParaView |
-| `errors.csv` / `errors_parallel.csv` | L² and H¹ error norms vs. time |
+| `errors.csv` / `errors_parallel.csv` | L² and H¹ error norms vs. time (EX1/EX2 only) |
 | `energy.csv` / `energy_parallel.csv` | Total, kinetic, and potential energy vs. time |
 | `center_point_solution.csv` | Newmark solution at (0,0) over time |
 | `center_point_solution_theta.csv` | θ-method solution at (0,0) over time |
+
+Error norms are only computed for EX1 and EX2, which have known exact solutions. For EX3 and EX4 the exact solution is not available, so only energy and center-point time series are produced.
 
 ### Energy Computation
 The discrete energy is computed as:
@@ -162,7 +169,7 @@ where M is the mass matrix, A is the stiffness matrix, and (u, v) are the displa
 
 ## Visualization
 
-**Plot error evolution:**
+**Plot dispersion / center-point solution:**
 ```bash
 python3 src/dispersion.py center_point_solution.csv
 ```
@@ -174,8 +181,14 @@ python3 src/dispersion.py mesh_4.csv mesh_5.csv mesh_6.csv mesh_7.csv
 
 **Compare energy for different Newmark parameters:**
 ```bash
-python3 src/plot_energy.py energy_0.5_0.25.csv energy_0.6_0.3025.csv
+python3 src/plot_energy.py EX2_energy_0.5_0.25.csv EX2_energy_0.6_0.3025.csv
 ```
+
+**Compare energy across mesh/dt configurations:**
+```bash
+python3 src/energy_plot_mesh.py energy_Newmark_7_0.01_1.csv energy_Newmark_7_0.005_1.csv
+```
+The `energy_plot_mesh.py` script auto-detects whether the varying parameter is the time step, mesh refinement, or method from the filename pattern `energy_<method>_<refinement>_<dt>_<r>.csv`.
 
 **View solution in ParaView:**
 Open the `.pvtu` files to visualize wave propagation and mesh partitioning.
